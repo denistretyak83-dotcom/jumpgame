@@ -1,0 +1,51 @@
+{
+  "screen": {
+    "width": 800,
+    "height": 600,
+    "fps": 60,
+    "caption": "Jump & Reach the Flag"
+  },
+  "colors": {
+    "BLUE": "0,102,204",
+    "SKY": "135,206,235",
+    "GREEN": "0,200,0",
+    "BROWN": "139,69,19",
+    "ORANGE": "255,140,0",
+    "RED": "255,0,0",
+    "BLACK": "0,0,0",
+    "GOLD": "255,215,0",
+    "WHITE": "255,255,255",
+    "SKY_RETRO": "108,156,252"
+  },
+  "player": {
+    "width": 40,
+    "height": 50,
+    "speed": 350,
+    "spawn": [50, 490]
+  },
+  "physics": {
+    "gravity": 1500,
+    "jump_strength": -650,
+    "max_fall": 1400
+  },
+  "enemy": {
+    "width": 35,
+    "height": 35,
+    "speed": 150
+  },
+  "game": {
+    "lives": 3,
+    "coins_total": 5,
+    "death_respawn_offset": 60,
+    "fade_speed": 255
+  },
+  "assets": {
+    "fonts_dir": "assets/fonts",
+    "sprites_dir": "assets/sprites",
+    "sounds_dir": "assets/sounds",
+    "font_size": 24,
+    "small_font_size": 12,
+    "font_name": "PressStart2P-Regular.ttf",
+    "bgm_file": "bgm_song.ogg"
+  }
+}
