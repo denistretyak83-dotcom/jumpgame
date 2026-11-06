@@ -43,7 +43,9 @@ class Player(BaseCharacter):
                 self.event_bus.emit('player.jump')
 
         # --- 4. Физика (гравитация + коллизии) ---
-        self.apply_physics(dt, ctx.platforms)
+        head_bumped = self.apply_physics(dt, ctx.platforms)
+        if head_bumped and self.event_bus:
+            self.event_bus.emit('player.bump')
 
         # --- 5. Границы экрана ---
         if self.rect.left < 0:

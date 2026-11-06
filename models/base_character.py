@@ -1,13 +1,19 @@
 from abc import ABC, abstractmethod
 import pygame
 from models.entity import Entity
+from models.physics import PhysicsComponent, PhysicsConfig
 
 
 class BaseCharacter(Entity, ABC):
-    """Богатая база: позиция (Entity) + физика + состояние + смерть + анимации."""
+    """Лёгкая база: состояние + игровой контракт.
+
+    Физика делегируется PhysicsComponent (композиция).
+    Смерть и анимации -- ответственности, которые наследники
+    используют по необходимости.
+    """
 
     def __init__(self, x, y, width, height, animations=None, config=None,
-                 event_bus=None, death_gravity=50):
+                 event_bus=None, death_gravity=1200):
         super().__init__(x, y, width, height)
         self.animations = animations if animations else {}
         self.current_anim = self._first_anim()
@@ -21,6 +27,9 @@ class BaseCharacter(Entity, ABC):
         self.facing_left = False
         self.is_dead = False
 
+        # Физика: отдельный компонент (композиция)
+        self.physics = PhysicsComponent(config)
+
     @abstractmethod
     def update(self, dt, ctx, intent=None):
         ...
@@ -30,85 +39,33 @@ class BaseCharacter(Entity, ABC):
         ...
 
     # ------------------------------------------------------------------
-    # Общая физика (гравитация + коллизии с платформами)
+    # Физика теперь ЧЕРЕЗ компонент (доступ для наследников)
     # ------------------------------------------------------------------
 
     def apply_physics(self, dt, platforms):
-        if self.is_dead or self._cfg is None:
-            return
+        """Применяет физику через PhysicsComponent.
 
-        # гравитация (px/с)
-        if not self.on_ground:
-            self.vel_y += self._cfg.physics.gravity * dt
-            if self.vel_y > self._cfg.physics.max_fall:
-                self.vel_y = self._cfg.physics.max_fall
-
-        # вертикаль + коллизии
-        self.rect.y += int(self.vel_y * dt)
-        for p in platforms:
-            if self.rect.colliderect(p):
-                if self.vel_y > 0.5 and self.rect.top < p.top:
-                    self.rect.bottom = p.top
-                    self.vel_y = 0
-                    self.on_ground = True
-                elif self.vel_y < -0.5 and self.rect.top < p.bottom:
-                    self.rect.top = p.bottom
-                    self.vel_y = 0
-
-        # горизонталь + коллизии
-        self.rect.x += int(self.vel_x * dt)
-        for p in platforms:
-            if self.rect.colliderect(p):
-                if self.vel_x > 0:
-                    self.rect.right = p.left
-                elif self.vel_x < 0:
-                    self.rect.left = p.right
-
-        self._update_grounded(platforms)
-
-    def _update_grounded(self, platforms):
-        """Проверка опоры С ПОМОЩЬЮ КАСАНИЯ, а не строгого colliderect.
-
-        ФИКС: pygame.Rect.colliderect() при точном касании (bottom == top)
-        возвращает False, из-за чего on_ground сбрасывался каждый кадр.
-        Теперь допуск +8px.
+        Returns:
+            bool: True, если был удар головой о низ платформы.
         """
-        grounded = False
-        for p in platforms:
-            if (self.rect.bottom >= p.top - 1
-                    and self.rect.bottom <= p.top + 8
-                    and self.rect.bottom > p.top - 2
-                    and self.vel_y >= -0.5):
-                # требуется горизонтальное перекрытие
-                if self.rect.right > p.left and self.rect.left < p.right:
-                    grounded = True
-                    break
-        self.on_ground = grounded
+        return self.physics.apply(self, dt, platforms)
 
     # ------------------------------------------------------------------
-    # Общая смерть (кинематографичное падение)
+    # Смерть (кинематографичное падение)
     # ------------------------------------------------------------------
 
     def die(self, launch_up=True):
-        """Помечает сущность мёртвой.
-
-        launch_up=True  -- умеренный подброс вверх (кинематографично).
-        launch_up=False -- без подброса (смерть от врага, просто падает вниз).
-        """
         if self.is_dead:
             return
         self.is_dead = True
-        self.death_vy = -400 if launch_up else -100  # лёгкий подброс
+        # при смерти обнуляем горизонтальную физику
+        self.vel_x = 0
+        self.death_vy = -400 if launch_up else -100
         if self.event_bus:
             self.event_bus.emit('character.death', self)
 
     def update_death(self, dt):
-        """Обновляет падение мёртвой сущности. True -- упал за экран.
-
-        Использует усиленную гравитацию смерти (кинестатографично).
-        """
-        DEATH_GRAVITY = 1200  # усиленная гравитация для смерти
-        self.death_vy += DEATH_GRAVITY * dt
+        self.death_vy += self.death_gravity * dt
         self.rect.y += int(self.death_vy * dt)
         return (self._cfg is not None) and (self.rect.top > self._cfg.screen.height + 60)
 
