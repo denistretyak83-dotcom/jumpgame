@@ -17,7 +17,7 @@ from models.collision import (
     check_coin_collision, check_enemy_collision,
     check_flag_collision, check_fell_out
 )
-
+from core.logger import logger
 
 class Game:
     def __init__(self, root_dir=None):
@@ -30,6 +30,16 @@ class Game:
         self.event_bus = EventBus()
         self.state = StateManager()
         self.camera = ParallaxCamera()
+
+        logger.attach(
+            self.event_bus,
+            extra={
+                "player_died": ("Player", "Player died"),
+                "level_won": ("Game", "Level won"),
+                "coin_collected": ("Game", "Coin collected, total -> {0}"),
+                "game_over": ("Game", "GAME OVER"),
+            },
+        )
 
         # --- Assets & Audio ---
         self.assets = AssetLoader(str(self.root))
@@ -143,6 +153,7 @@ class Game:
                 self.event_bus.emit("lives_changed", self.lives)
                 if self.lives <= 0:
                     self.game_over = True
+                    self.event_bus.emit("game_over")
                     self.fade_direction = 1
                     self.state.set(GameState.GAME_OVER)
                 else:
@@ -186,22 +197,26 @@ class Game:
                 self.coin_collected[idx] = True
                 new_score = self.score + 1
                 self.event_bus.emit("score_changed", new_score)
+                self.event_bus.emit("coin_collected", new_score)
                 self.sounds.play_coin()
 
     def _handle_enemy_collision(self):
         enemies = [e for e in self.entities if e is not self.player]
         hit = check_enemy_collision(self.player.rect, enemies)
         if hit is not None:
+            self.event_bus.emit("player_died")
             self.player.die()
 
     def _handle_flag_collision(self):
         if check_flag_collision(self.player.rect, self.level.flag_rect):
+            self.event_bus.emit("level_won")
             self.won = True
             self.state.set(GameState.WON)
             self.sounds.play_win()
 
     def _handle_fall_out(self, dt):
         if check_fell_out(self.player.rect, settings.screen.height):
+            self.event_bus.emit("player_died")
             self.player.die()
 
     def _update_game_over_fade(self, dt):
