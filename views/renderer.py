@@ -15,14 +15,13 @@ class Renderer:
         self.small_font = small_font
         self.config = config
 
-        # Загружаем фон и тайлы
         self.background = RetroBackground()
         self.tiles = RetroTiles()
 
-        # Кэш для спрайтов платформ, чтобы не рисовать их каждый кадр "на лету"
         self._platform_surfaces = {}
         self.current_platforms = []
 
+    # --- хелперы платформ (РАБОЧИЕ) ---
     def _platform_surface(self, width, height):
         """Кэширует заранее отрисованную платформу по её размерам."""
         key = (width, height)
@@ -39,84 +38,69 @@ class Renderer:
         """Получает текущие платформы."""
         return self.current_platforms
 
-    def draw(self, player, enemies, coins, coin_collected, flag_rect,
+    # ==================================================================
+    # НОВЫЙ МЕТОД: единообразная отрисовка всех сущностей (ПОЛИМОРФИЗМ)
+    # ==================================================================
+    def draw_entities(self, entities):
+        """Рисует каждую сущность через get_render_info().
+        Renderer НЕ знает тип сущности — только данные из info.
+        """
+        for entity in entities:
+            info = entity.get_render_info()
+            frame = info.get('frame')
+            if frame is None:
+                continue
+
+            rect = info['rect']
+
+            # Позиция: игрок бликается от низа (bottom), враги — от верха (top).
+            # Используем то, что сущность сама отдаёт в info — добавим ключ 'y'.
+            draw_y = info.get('y', rect.y)
+            self.screen.blit(frame, (rect.x, draw_y))
+
+    # ==================================================================
+    def draw(self, entities, coins, coin_collected, flag_rect,
              score, lives, seconds, state_manager, won, game_over,
              fade_level, camera):
         screen = self.screen
 
         # 1. Очистка и фон
-        # Заполняем фон цветом
         screen.fill(settings.colors['SKY'])
-        # Рисуем параллакс (горы)
         self.background.draw(screen, camera.player_x)
 
-        # 2. ПЛАТФОРМЫ (Исправление: рисуем их явно)
+        # 2. ПЛАТФОРМЫ
         if self.current_platforms:
             for p in self.current_platforms:
-                # Получаем или создаём спрайт для этой платформы
                 surf = self._platform_surface(p.width, p.height)
                 screen.blit(surf, (p.x, p.y))
 
         # 3. МОНЕТЫ
         for i, coin in enumerate(coins):
             if not coin_collected[i]:
-                # Рисуем монетку (ellipse)
-                pygame.draw.ellipse(screen, (180, 130, 0), coin.inflate(2, 2))  # Тень/Обводка
-                pygame.draw.ellipse(screen, (255, 220, 0), coin)  # Золотой круг
-                pygame.draw.ellipse(screen, (255, 245, 120), coin.inflate(-8, -8))  # Блик
+                pygame.draw.ellipse(screen, (180, 130, 0), coin.inflate(2, 2))
+                pygame.draw.ellipse(screen, (255, 220, 0), coin)
+                pygame.draw.ellipse(screen, (255, 245, 120), coin.inflate(-8, -8))
 
-        # 4. ВРАГИ (Ваша логика отрисовки)
-        if not player.is_dead:  # Можно рисовать врагов даже если игрок умер, но для простоты оставим так
-            for enemy in enemies:
-                if hasattr(enemy, 'current_anim') and enemy.current_anim:
-                    frame = enemy.current_anim.current()
-                    if frame is not None:
-                        # Если враг смотрит влево, зеркалим спрайт
-                        if hasattr(enemy, 'facing_left') and enemy.facing_left:
-                            frame = pygame.transform.flip(frame, True, False)
-                        screen.blit(frame, (enemy.rect.x, enemy.rect.y))
+        # 4. СУЩНОСТИ (игрок + враги) — ЗАМЕНА блоков 4 и 6
+        #    Условие: рисуем сущности, если не победа (игрок скрывается при выигрыше)
+        if not won:
+            self.draw_entities(entities)
 
         # 5. ФЛАГ (Цель)
         if flag_rect:
             fx, fy = flag_rect.x, flag_rect.y
-            # Древко
             pygame.draw.line(screen, settings.colors['BROWN'], (fx + 5, fy + 60),
                              (fx + 5, fy), 4)
-            # Полотнище
             pygame.draw.polygon(screen, settings.colors['ORANGE'], [
                 (fx + 5, fy), (fx + 30, fy + 12), (fx + 5, fy + 24)
             ])
 
-        # 6. ИГРОК
-        if not won:
-            # Если игрок жив
-            if not player.is_dead:
-                frame = player.current_anim.current()
-                if frame is not None:
-                    y_offset = player.rect.bottom - frame.get_height()
-                    x_offset = player.rect.x
-
-                    if player.facing_left:
-                        # Зеркалим прыжок и idle, если нужно (в зависимости от спрайтов)
-                        if (player.current_anim is player.animations['idle'] or
-                                player.current_anim is player.animations['jump']):
-                            frame = pygame.transform.flip(frame, True, False)
-
-                    screen.blit(frame, (x_offset, y_offset))
-            else:
-                # Анимация смерти (перевёрнутый idle)
-                frame = player.animations['idle'].current()
-                if frame is not None:
-                    frame = pygame.transform.flip(frame, False, True)
-                    screen.blit(frame, (player.rect.x, player.rect.y))
-
-        # 7. ИНТЕРФЕЙС (HUD)
+        # 6. ИНТЕРФЕЙС (HUD)
         draw_retro_hud(screen, self.small_font, self.small_font, score, lives,
                        seconds, self.coin_icon)
 
-        # 8. СООБЩЕНИЯ (Победа / Поражение)
+        # 7. СООБЩЕНИЯ
         if won:
-            # Текст победы
             win_text = self.font.render("YOU WIN!", True, settings.colors['RED'])
             screen.blit(win_text, (settings.screen.width // 2 - 90,
                                    settings.screen.height // 2 - 40))
@@ -126,7 +110,6 @@ class Renderer:
                                   settings.screen.height // 2))
 
         if game_over:
-            # Затемнение экрана при проигрыше
             if fade_level < 180:
                 go_text = self.font.render("GAME OVER!", True, settings.colors['RED'])
                 screen.blit(go_text, (settings.screen.width // 2 - 100,
@@ -135,6 +118,4 @@ class Renderer:
                                                  settings.colors['BLACK'])
                 screen.blit(restart, (settings.screen.width // 2 - 110,
                                       settings.screen.height // 2))
-
-            # Эффект затухания
             draw_pixelated_fade(screen, fade_level, grid=4)

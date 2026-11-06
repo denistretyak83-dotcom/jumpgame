@@ -1,31 +1,43 @@
 """Player model -- единая логика: ввод, физика, коллизии, анимация, звуки."""
 import pygame
 from core.config import settings as config
+from models.base_character import BaseCharacter
 
 
-class Player:
+class Player(BaseCharacter):
     def __init__(self, x, y, animations, sounds, use_config=None):
         if use_config is None:
             use_config = config
         self._cfg = use_config
 
-        self.rect = pygame.Rect(x, y, self._cfg.player.width, self._cfg.player.height)
+        # --- Общие поля через BaseCharacter ---
+        rect = pygame.Rect(x, y, self._cfg.player.width, self._cfg.player.height)
+        super().__init__(rect, animations)
+
+        # --- Скорость и состояние ---
         self.vel_x = 0
         self.vel_y = 0
         self.on_ground = False
         self.facing_left = False
 
-        self.is_dead = False
+        # Смерть
         self.death_vy = 0
         self.jumping = False
 
         self._was_on_ground = False  # Для защиты от "тарахтения" при прыжке вверх
 
-        self.animations = animations
         self.sounds = sounds
         self.current_anim = self.animations['idle']
 
-    def update(self, dt, keys, platforms):
+    # ------------------------------------------------------------------
+    # Контракт BaseCharacter: update
+    # ------------------------------------------------------------------
+
+    def update(self, dt: float, ctx) -> None:
+        """ctx -- контекст; здесь нужны ctx.keys и ctx.platforms."""
+        keys = ctx.keys
+        platforms = ctx.platforms
+
         # --- 1. Обработка смерти ---
         if self.is_dead:
             self.current_anim.update()
@@ -33,23 +45,20 @@ class Player:
             return
 
         # --- 2. Проверка опоры (FIX для хождения по воздуху) ---
-        # Определяем, есть ли под нами платформа
         support = False
         for p in platforms:
-            # Если мы просто стоим (скорость падения почти 0), мы на опоре
             if self.rect.colliderect(p) and abs(self.vel_y) < 0.1:
                 support = True
                 break
 
         if support:
             self.on_ground = True
-            # Останавливаем падение, если мы просто приземлились
             if self.vel_y > 0.1:
                 self.vel_y = 0
         else:
             self.on_ground = False
 
-        # --- 3. Гравитация (применяется всегда, если не на земле) ---
+        # --- 3. Гравитация ---
         if not self.on_ground:
             self.vel_y += self._cfg.physics.gravity * dt
 
@@ -58,27 +67,19 @@ class Player:
 
         self.rect.y += int(self.vel_y * dt)
 
-        # --- 4. Коллизии по Y (ИСПРАВЛЕНИЕ ЗВУКА) ---
-        # Мы просто корректируем позицию.
-        # ВАЖНО: Используем порог скорости > 0.5 и < -0.5, чтобы звук не срабатывал при "дрожании"
-        # на поверхности.
+        # --- 4. Коллизии по Y ---
         for p in platforms:
             if self.rect.colliderect(p):
-                # 1. ПРИЗЕМЛЕНИЕ (Ноги)
-                # Если мы падаем вниз И наша вершина выше вершины платформы
-                # Мы просто ставим ноги на платформу. ЗВУК УБРАН.
                 if self.vel_y > 0.5 and self.rect.top < p.top:
                     self.rect.bottom = p.top
                     self.vel_y = 0
                     self.on_ground = True
 
-                # 2. УДАР ГОЛОВОЙ (Потолок)
-                # Если мы летим вверх И низ платформы выше вершины игрока
-                # ЗДЕСЬ ЗВУК ОСТАВЛЕН
                 elif self.vel_y < -0.5 and self.rect.top < p.bottom:
                     self.rect.top = p.bottom
                     self.vel_y = 0
-                    if self.sounds: self.sounds.play_bump()
+                    if self.sounds:
+                        self.sounds.play_bump()
 
         # --- 5. Ввод и Движение по X ---
         self.vel_x = 0
@@ -102,23 +103,62 @@ class Player:
                     self.rect.left = p.right
 
         # Границы экрана
-        if self.rect.left < 0: self.rect.left = 0
-        if self.rect.right > self._cfg.screen.width: self.rect.right = self._cfg.screen.width
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > self._cfg.screen.width:
+            self.rect.right = self._cfg.screen.width
 
         # --- 6. Прыжок ---
-        jump_pressed = keys[pygame.K_SPACE] or keys[pygame.K_w] or keys[pygame.K_UP]
-
+        jump_pressed = (keys[pygame.K_SPACE] or keys[pygame.K_w]
+                        or keys[pygame.K_UP])
         if jump_pressed and self.on_ground and not self.jumping:
             self.vel_y = self._cfg.physics.jump_strength
             self.on_ground = False
             self.jumping = True
-            if self.sounds: self.sounds.play_jump()
+            if self.sounds:
+                self.sounds.play_jump()
         elif not jump_pressed:
             self.jumping = False
 
-            # --- 7. Обновление анимации (FIX) ---
+        # --- 7. Анимация ---
         self._update_animation()
         self.current_anim.update()
+
+    # ------------------------------------------------------------------
+    # Контракт BaseCharacter: get_render_info
+    # ------------------------------------------------------------------
+
+    def get_render_info(self) -> dict:
+        if self.is_dead:
+            frame = self._current_frame('idle')
+            if frame is not None:
+                frame = pygame.transform.flip(frame, False, True)
+            return {
+                'frame': frame,
+                'rect': self.rect,
+                'y': self.rect.y,  # смерть рисуется от верха
+                'facing_left': self.facing_left,
+                'is_dead': True,
+            }
+
+        frame = self.current_anim.current()
+        if self.facing_left and frame is not None:
+            if (self.current_anim is self.animations['idle']
+                    or self.current_anim is self.animations['jump']):
+                frame = pygame.transform.flip(frame, True, False)
+
+        frame_h = frame.get_height() if frame else 0
+        return {
+            'frame': frame,
+            'rect': self.rect,
+            'y': self.rect.bottom - frame_h,  # от низа (как было)
+            'facing_left': self.facing_left,
+            'is_dead': False,
+        }
+
+    # ------------------------------------------------------------------
+    # Внутренние методы (физика смерти, анимация)
+    # ------------------------------------------------------------------
 
     def _update_animation(self):
         target_anim = None
@@ -141,7 +181,6 @@ class Player:
             else:
                 target_anim = self.animations['idle']
 
-        # Если анимация изменилась — сбрасываем её (сброс кадров)
         if self.current_anim is not target_anim:
             self.current_anim = target_anim
             self.current_anim.reset()
@@ -149,12 +188,11 @@ class Player:
     def die(self):
         self.is_dead = True
         self.death_vy = -20
-        if self.sounds: self.sounds.play_death()
+        if self.sounds:
+            self.sounds.play_death()
 
     def update_death(self, dt):
-
         GRAVITY_DEATH = 50
-
         self.death_vy += GRAVITY_DEATH * dt
         self.rect.y += int(self.death_vy)
         return self.rect.top > self._cfg.screen.height + 60

@@ -6,15 +6,13 @@ from core.event_bus import EventBus
 from core.state_manager import StateManager, GameState
 from core.camera import ParallaxCamera
 from core.asset_loader import AssetLoader
+from core.context import GameContext          # <-- новый контекст
 from views.animation import Animation
 from views.renderer import Renderer
-from views.player_view import PlayerView
 from models.factory import WorldFactory
 from models.player import Player
 from levels.level_manager import LevelManager
 from audio.sound_manager import SoundManager
-from controllers.player_controller import PlayerController
-from controllers.enemy_controller import EnemyController  # <--- Добавлено
 from models.collision import (
     check_coin_collision, check_enemy_collision,
     check_flag_collision, check_fell_out
@@ -48,10 +46,6 @@ class Game:
         self.renderer = Renderer(self.screen, self.assets, self.coin_icon,
                                  self.font, self.small_font, self.config)
 
-        # --- Controllers ---
-        self.player_controller = PlayerController()
-        self.enemy_controller = EnemyController()  # <--- Добавлено
-
         # --- Factories & Animations ---
         self.world_factory = WorldFactory(self.assets, self.config)
         self.player_anims = self._build_player_animations()
@@ -73,6 +67,12 @@ class Game:
         self.fade_direction = 0
         self.won = False
         self.game_over = False
+        self.enemies = []
+
+        # --- Полиморфизм: единый список сущностей ---
+        self.entities = []          # все движущиеся сущности (player + enemies)
+        self.player = None          # быстрая ссылка на игрока
+        self.player_view = None     # (удалено — сущности рисует Renderer через get_render_info)
 
         # Event Listeners
         self.event_bus.subscribe("score_changed", lambda s: setattr(self, "score", s))
@@ -120,17 +120,15 @@ class Game:
                 return False
         return True
 
+    # --------------------------------------------------------------
     def _update(self, dt):
-        # Получаем все нажатые клавиши один раз за кадр
         keys = pygame.key.get_pressed()
 
-        # 1. Обработка состояний конца игры + РЕСТАРТ
+        # 1. Состояния конца игры + рестарт
         if self.state.has_ended():
             if keys[pygame.K_r]:
-                # Рестарт по нажатию R
                 self.reset_run_state()
                 return
-
             if self.game_over:
                 self._update_game_over_fade(dt)
             return
@@ -138,7 +136,7 @@ class Game:
         if not self.state.is_playing():
             return
 
-        # 2. Обработка смерти игрока
+        # 2. Смерть игрока
         if self.player.is_dead:
             if self.player.update_death(dt):
                 self.lives -= 1
@@ -151,24 +149,36 @@ class Game:
                     self._respawn_player()
             return
 
-        # 3. Основной игровой цикл
-        # Ввод
-        self.player_controller.handle_input(self.player, keys, dt)
-        # Физика и анимация
-        self.player.update(dt, keys, self.level.platforms)
+        # 3. Контекст кадра (однажды на кадр)
+        ctx = GameContext(keys=keys, platforms=self.level.platforms)
 
-        # Логика игры
+        # 4. ПОЛИМОРФИЗМ: единый цикл обновления всех сущностей
+        #    Player и Enemy вызываются одинаково: entity.update(dt, ctx)
+        for entity in self.entities:
+            entity.update(dt, ctx)
+
+        # 5. Логика игры
         self._handle_coin_collection()
-        self.enemy_controller.update_all(self.enemies, dt)
         self._handle_enemy_collision()
         self._handle_flag_collision()
         self._handle_fall_out(dt)
 
-        # Камера и счётчик
+        # 6. Камера и счётчик
         self.camera.update(self.player.rect.x)
         self.frame_count += 1
 
-    # --- Logic Modules ---
+    # --------------------------------------------------------------
+    def _draw(self):
+        # Сущности (player + враги) рисует Renderer через get_render_info()
+        self.renderer.draw(
+            self.entities,            # <-- единый список вместо player/enemies
+            self.coins, self.coin_collected,
+            self.level.flag_rect, self.score, self.lives,
+            self.frame_count, self.state, self.won, self.game_over,
+            self.fade_level, self.camera
+        )
+        # player_view рендер УДАЛЁН — отрисовка игрока внутри Renderer.draw_entities
+
     def _handle_coin_collection(self):
         hit_indices = check_coin_collision(self.coins, self.coin_collected, self.player.rect)
         for idx in hit_indices:
@@ -179,7 +189,9 @@ class Game:
                 self.sounds.play_coin()
 
     def _handle_enemy_collision(self):
-        if check_enemy_collision(self.player.rect, self.enemies) is not None:
+        enemies = [e for e in self.entities if e is not self.player]
+        hit = check_enemy_collision(self.player.rect, enemies)
+        if hit is not None:
             self.player.die()
 
     def _handle_flag_collision(self):
@@ -199,25 +211,20 @@ class Game:
                 self.fade_level = 255
                 self.fade_direction = 0
 
-    # --- Drawing ---
-    def _draw(self):
-        self.renderer.draw(
-            self.player, self.enemies, self.coins, self.coin_collected,
-            self.level.flag_rect, self.score, self.lives,
-            self.frame_count, self.state, self.won, self.game_over,
-            self.fade_level, self.camera
-        )
-        self.player_view.render(self.screen)
-
-    # --- State Management ---
+    # --------------------------------------------------------------
     def _respawn_player(self):
         """Возвращает игрока на точку спавна после потери жизни."""
         spawn_point = self.level.player_spawn
-        self.player = self.world_factory.create_player(
+        new_player = self.world_factory.create_player(
             spawn_point[0], spawn_point[1],
             self.player_anims, self.sounds
         )
-        self.player_view = PlayerView(self.player)
+        # Заменяем игрока в self.entities (сохраняя порядок)
+        for i, e in enumerate(self.entities):
+            if e is self.player:
+                self.entities[i] = new_player
+                break
+        self.player = new_player
         self.camera.update(self.player.rect.x)
 
     def reset_run_state(self):
@@ -233,22 +240,24 @@ class Game:
 
         level_data = self.level_manager.load_level("level_1")
         self.level = level_data
-
-        # === ВОТ ЭТОЙ СТРОЧКИ НЕ ХВАТАЛО ===
         self.renderer.set_platforms(level_data.platforms)
-        # ===================================
 
+        # Создаём игрока
         spawn_point = self.level.player_spawn
-
         self.player = self.world_factory.create_player(
             spawn_point[0], spawn_point[1],
             self.player_anims, self.sounds
         )
-        self.player_view = PlayerView(self.player)
+
+        # ← ДОБАВИТЬ ЭТУ СТРОКУ:
+        self.enemies = [e.spawn_copy() for e in level_data.enemies]
+
+        # Единый список сущностей: [player] + все враги
+        self.entities = [self.player]
+        self.entities += [e.spawn_copy() for e in level_data.enemies]
 
         self.coins = [r.copy() for r in level_data.coins]
         self.coin_collected = [False] * len(self.coins)
-        self.enemies = [e.spawn_copy() for e in level_data.enemies]
 
         self.camera.update(self.player.rect.x)
         self.sounds.play_music()
