@@ -1,4 +1,3 @@
-"""Base Entity -- shared position/size/collision box."""
 import pygame
 
 

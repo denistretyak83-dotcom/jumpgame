@@ -12,6 +12,8 @@ from views.renderer import Renderer
 from models.factory import WorldFactory
 from models.player import Player
 from levels.level_manager import LevelManager
+from controllers.player_controller import PlayerController
+from audio.audio_listener import attach_audio_listener
 from audio.sound_manager import SoundManager
 from models.collision import (
     check_coin_collision, check_enemy_collision,
@@ -44,6 +46,9 @@ class Game:
         # --- Assets & Audio ---
         self.assets = AssetLoader(str(self.root))
         self.sounds = SoundManager(self.assets.sounds_abs)
+
+        self.controller = PlayerController()
+        attach_audio_listener(self.event_bus, self.sounds)
 
         # --- Screen & Renderer ---
         self.screen = pygame.display.set_mode((settings.screen.width, settings.screen.height))
@@ -160,13 +165,17 @@ class Game:
                     self._respawn_player()
             return
 
-        # 3. Контекст кадра (однажды на кадр)
-        ctx = GameContext(keys=keys, platforms=self.level.platforms)
+        # 3. Ввод через контроллер (keys НЕ попадает в Player)
+        intent = self.controller.handle_input(keys)
+
+        # Контекст кадра (больше не содержит keys)
+        ctx = GameContext(platforms=self.level.platforms,
+                          screen_width=settings.screen.width)
 
         # 4. ПОЛИМОРФИЗМ: единый цикл обновления всех сущностей
-        #    Player и Enemy вызываются одинаково: entity.update(dt, ctx)
+        #    Player использует intent, Enemy его игнорирует.
         for entity in self.entities:
-            entity.update(dt, ctx)
+            entity.update(dt, ctx, intent)
 
         # 5. Логика игры
         self._handle_coin_collection()
@@ -205,7 +214,7 @@ class Game:
         hit = check_enemy_collision(self.player.rect, enemies)
         if hit is not None:
             self.event_bus.emit("player_died")
-            self.player.die()
+            self.player.die(launch_up=False)
 
     def _handle_flag_collision(self):
         if check_flag_collision(self.player.rect, self.level.flag_rect):
@@ -217,7 +226,7 @@ class Game:
     def _handle_fall_out(self, dt):
         if check_fell_out(self.player.rect, settings.screen.height):
             self.event_bus.emit("player_died")
-            self.player.die()
+            self.player.die(launch_up=False)
 
     def _update_game_over_fade(self, dt):
         if self.fade_direction == 1:
@@ -232,7 +241,7 @@ class Game:
         spawn_point = self.level.player_spawn
         new_player = self.world_factory.create_player(
             spawn_point[0], spawn_point[1],
-            self.player_anims, self.sounds
+            self.player_anims, self.event_bus
         )
         # Заменяем игрока в self.entities (сохраняя порядок)
         for i, e in enumerate(self.entities):
@@ -261,7 +270,7 @@ class Game:
         spawn_point = self.level.player_spawn
         self.player = self.world_factory.create_player(
             spawn_point[0], spawn_point[1],
-            self.player_anims, self.sounds
+            self.player_anims, self.event_bus
         )
 
         # ← ДОБАВИТЬ ЭТУ СТРОКУ:

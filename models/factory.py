@@ -45,12 +45,15 @@ class WorldFactory:
     # Special Instance Methods (used by Game/Controllers)
     # ------------------------------------------------------------------
 
-    def create_player(self, x, y, animations, sounds=None):
+    def create_player(self, x, y, animations, event_bus=None):
         """
         Build a Player with the given spawn coordinates.
+
+        Аргумент sounds убран. Теперь передаётся event_bus,
+        чтобы Player мог эмитить события (прыжок/смерть через EventBus),
+        а звуки обрабатывает AudioListener.
         """
-        # Передаем весь объект settings в Player, чтобы он знал свои настройки
-        return Player(x, y, animations, sounds, settings)
+        return Player(x, y, animations, use_config=self.config, event_bus=event_bus)
 
     # ------------------------------------------------------------------
     # Asset Helpers (Internal / View Layer Support)

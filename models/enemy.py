@@ -1,34 +1,24 @@
-"""Enemy model -- patrol AI. Наследует BaseCharacter (полиморфизм)."""
 import pygame
 from models.base_character import BaseCharacter
 
 
 class Enemy(BaseCharacter):
     def __init__(self, x, y, left, right, animations, config):
-        # --- Общие поля через BaseCharacter ---
-        rect = pygame.Rect(x, y, config.enemy.width, config.enemy.height)
-        super().__init__(rect, animations)
-
-        # --- Патруль ---
+        super().__init__(x, y, config.enemy.width, config.enemy.height,
+                         animations=animations, config=config)
         self.left = left
         self.right = right
-
-        # --- Сохраняем всё для spawn_copy (возрождение) ---
-        self.config = config
         self.spawn_x = x
         self.spawn_y = y
-
-        # --- Логика движения ---
-        self.vel_x = config.enemy.speed
-        self.current_anim = self.animations.get('walk')  # None, если нет
+        self.vel_x = config.enemy.speed   # начальная скорость (вправо)
+        self.current_anim = self.animations.get('walk')
 
     # ------------------------------------------------------------------
-    # Контракт BaseCharacter
+    # Контракт: update (патрульный AI)
     # ------------------------------------------------------------------
 
-    def update(self, dt: float, ctx) -> None:
-        """Патрульный AI. ctx не нужен врагу, но сигнатура едина (полиморфизм)."""
-        # Движение
+    def update(self, dt, ctx, intent=None):
+        """Патрульный AI. ctx/intent не нужны врагу — сигнатура едина."""
         self.rect.x += int(self.vel_x * dt)
 
         # Разворот на границах патруля
@@ -39,30 +29,26 @@ class Enemy(BaseCharacter):
             self.rect.right = self.right
             self.vel_x = -abs(self.vel_x)     # идти влево
 
-        # Обновление кадра анимации
         if self.current_anim:
             self.current_anim.update()
 
-    def get_render_info(self) -> dict:
-        return {
-            'frame': self._current_frame('walk'),
-            'rect': self.rect,
-            'y': self.rect.y,  # от верха (как было)
-            'facing_left': self.vel_x < 0,
-            'is_dead': self.is_dead,
-        }
+    # ------------------------------------------------------------------
+    # Контракт: get_render_info
+    # ------------------------------------------------------------------
+
+    def get_render_info(self):
+        return {'frame': self._current_frame('walk'), 'rect': self.rect,
+                'y': self.rect.y, 'facing_left': self.vel_x < 0,
+                'is_dead': self.is_dead}
 
     # ------------------------------------------------------------------
     # Возрождение
     # ------------------------------------------------------------------
 
     def spawn_copy(self):
-        """Возвращает копию врага с ИСХОДНЫМИ координатами спавна."""
-        return Enemy(
-            x=self.spawn_x,
-            y=self.spawn_y,
-            left=self.left,
-            right=self.right,
-            animations=self.animations,
-            config=self.config,
-        )
+        """Возвращает копию врага с ИСХОДНЫМИ координатами спавна.
+
+        🔧 ИСПРАВЛЕНО: было self.config (не существует) → теперь self._cfg.
+        """
+        return Enemy(self.spawn_x, self.spawn_y, self.left, self.right,
+                     self.animations, self._cfg)
