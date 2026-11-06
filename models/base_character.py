@@ -1,22 +1,20 @@
 from abc import ABC, abstractmethod
 import pygame
 from models.entity import Entity
-from models.physics import PhysicsComponent, PhysicsConfig
+from models.physics import PhysicsComponent
+from views.character_view import CharacterVisualState
 
 
 class BaseCharacter(Entity, ABC):
-    """Лёгкая база: состояние + игровой контракт.
+    """Чистая модель: состояние + физика + смерть.
 
-    Физика делегируется PhysicsComponent (композиция).
-    Смерть и анимации -- ответственности, которые наследники
-    используют по необходимости.
+    БЕЗ знания о спрайтах/анимациях (View-слой: SpriteCache/CharacterView).
+    БЕЗ синглтон-зависимости от конфига (DI через параметр config).
     """
 
-    def __init__(self, x, y, width, height, animations=None, config=None,
+    def __init__(self, x, y, width, height, config=None,
                  event_bus=None, death_gravity=1200):
         super().__init__(x, y, width, height)
-        self.animations = animations if animations else {}
-        self.current_anim = self._first_anim()
         self.event_bus = event_bus
         self._cfg = config
         self.death_gravity = death_gravity
@@ -35,11 +33,16 @@ class BaseCharacter(Entity, ABC):
         ...
 
     @abstractmethod
-    def get_render_info(self):
+    def get_visual_state(self) -> CharacterVisualState:
+        """Возвращает ЛОГИЧЕСКОЕ состояние для отрисовки.
+
+        View (CharacterView) превратит его в кадр. Модель НЕ знает
+        о спрайтах, flip и размерах картинок.
+        """
         ...
 
     # ------------------------------------------------------------------
-    # Физика теперь ЧЕРЕЗ компонент (доступ для наследников)
+    # Физика через компонент (фасад для обратной совместимости)
     # ------------------------------------------------------------------
 
     def apply_physics(self, dt, platforms):
@@ -58,7 +61,6 @@ class BaseCharacter(Entity, ABC):
         if self.is_dead:
             return
         self.is_dead = True
-        # при смерти обнуляем горизонтальную физику
         self.vel_x = 0
         self.death_vy = -400 if launch_up else -100
         if self.event_bus:
@@ -75,24 +77,3 @@ class BaseCharacter(Entity, ABC):
 
     def spawn_copy(self):
         return self
-
-    # ------------------------------------------------------------------
-    # Анимация (хелперы)
-    # ------------------------------------------------------------------
-
-    def _current_frame(self, anim_key):
-        anim = self.animations.get(anim_key)
-        return anim.current() if anim else None
-
-    def _switch_anim(self, key):
-        anim = self.animations.get(key)
-        if anim is None or anim is self.current_anim:
-            return False
-        self.current_anim = anim
-        self.current_anim.reset()
-        return True
-
-    def _first_anim(self):
-        for anim in self.animations.values():
-            return anim
-        return None

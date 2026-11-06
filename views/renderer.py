@@ -4,12 +4,13 @@ from core.config import settings
 from views.background import RetroBackground
 from views.tiles import RetroTiles
 from views.hud import draw_retro_hud, draw_pixelated_fade
+from views.sprite_cache import SpriteCache
 
 
 class Renderer:
-    def __init__(self, screen, assets, coin_icon, font, small_font, config):
+    def __init__(self, screen, sprite_cache, coin_icon, font, small_font, config):
         self.screen = screen
-        self.assets = assets
+        self.sprite_cache = sprite_cache      # ← View-слой анимаций
         self.coin_icon = coin_icon
         self.font = font
         self.small_font = small_font
@@ -21,42 +22,52 @@ class Renderer:
         self._platform_surfaces = {}
         self.current_platforms = []
 
-    # --- хелперы платформ (РАБОЧИЕ) ---
+    # --- хелперы платформ ---
     def _platform_surface(self, width, height):
-        """Кэширует заранее отрисованную платформу по её размерам."""
         key = (width, height)
         if key not in self._platform_surfaces:
             self._platform_surfaces[key] = self.tiles.grass_top(width, height)
         return self._platform_surfaces[key]
 
     def set_platforms(self, platforms):
-        """Устанавливает список платформ текущего уровня."""
         self.current_platforms = platforms
 
     @property
     def platforms(self):
-        """Получает текущие платформы."""
         return self.current_platforms
 
     # ==================================================================
-    # НОВЫЙ МЕТОД: единообразная отрисовка всех сущностей (ПОЛИМОРФИЗМ)
+    # НОВЫЙ МЕТОД: единообразная отрисовка сущностей (ПОЛИМОРФИЗМ)
+    # View получает ЛОГИЧЕСКОЕ состояние от модели и превращает его в кадр.
     # ==================================================================
-    def draw_entities(self, entities):
-        """Рисует каждую сущность через get_render_info().
-        Renderer НЕ знает тип сущности — только данные из info.
+    def _view_for(self, entity):
+        """Возвращает CharacterView для конкретной сущности.
+
+        Простой роутер по типу. Если появится больше типов --
+        вынести в реестр (entity_type -> view).
         """
+        from models.player import Player
+        from models.enemy import Enemy
+
+        if isinstance(entity, Player):
+            return self.sprite_cache.player_view()
+        if isinstance(entity, Enemy):
+            return self.sprite_cache.enemy_view()
+        return None
+
+    def draw_entities(self, entities):
+        """Рисует сущности через get_visual_state() + CharacterView.render()."""
         for entity in entities:
-            info = entity.get_render_info()
-            frame = info.get('frame')
+            view = self._view_for(entity)
+            if view is None:
+                continue
+
+            state = entity.get_visual_state()
+            frame, x, y = view.render(state)
             if frame is None:
                 continue
 
-            rect = info['rect']
-
-            # Позиция: игрок бликается от низа (bottom), враги — от верха (top).
-            # Используем то, что сущность сама отдаёт в info — добавим ключ 'y'.
-            draw_y = info.get('y', rect.y)
-            self.screen.blit(frame, (rect.x, draw_y))
+            self.screen.blit(frame, (x, y))
 
     # ==================================================================
     def draw(self, entities, coins, coin_collected, flag_rect,
@@ -81,8 +92,7 @@ class Renderer:
                 pygame.draw.ellipse(screen, (255, 220, 0), coin)
                 pygame.draw.ellipse(screen, (255, 245, 120), coin.inflate(-8, -8))
 
-        # 4. СУЩНОСТИ (игрок + враги) — ЗАМЕНА блоков 4 и 6
-        #    Условие: рисуем сущности, если не победа (игрок скрывается при выигрыше)
+        # 4. СУЩНОСТИ (игрок + враги)
         if not won:
             self.draw_entities(entities)
 

@@ -20,6 +20,7 @@ from models.collision import (
     check_flag_collision, check_fell_out
 )
 from core.logger import logger
+from views.sprite_cache import SpriteCache
 
 class Game:
     def __init__(self, root_dir=None):
@@ -58,17 +59,19 @@ class Game:
         self.font = self.assets.get_font(settings.assets.font_size)
         self.small_font = self.assets.get_font(settings.assets.small_font_size)
         self.coin_icon = self._make_coin_icon()
-        self.renderer = Renderer(self.screen, self.assets, self.coin_icon,
+
+        # ██ НОВОЕ: SpriteCache (View-слой анимаций) вместо player_anims/enemy_anims
+        self.sprite_cache = SpriteCache(self.assets, self.config)
+
+        self.renderer = Renderer(self.screen, self.sprite_cache, self.coin_icon,
                                  self.font, self.small_font, self.config)
 
-        # --- Factories & Animations ---
+        # --- Factories ---
         self.world_factory = WorldFactory(self.assets, self.config)
-        self.player_anims = self._build_player_animations()
-        self.enemy_anims = self._build_enemy_animations()
 
         # --- Level Management ---
         self.level_manager = LevelManager(self.root, entity_factories={
-            "enemy": lambda d: self.world_factory.create_enemy(d, self.enemy_anims),
+            "enemy": lambda d: self.world_factory.create_enemy(d),
             "platform": lambda d: pygame.Rect(d["x"], d["y"], d["w"], d["h"]),
             "flag": lambda d: pygame.Rect(d["x"], d["y"], d["w"], d["h"]),
             "coin": lambda d: pygame.Rect(d["x"], d["y"], d["w"], d["h"]),
@@ -102,19 +105,6 @@ class Game:
         pygame.draw.circle(icon, (255, 200, 0), (8, 8), 7)
         pygame.draw.circle(icon, (255, 240, 100), (6, 6), 4)
         return icon
-
-    def _build_player_animations(self):
-        pf = self.world_factory.load_player_frames()
-        return {
-            "idle": Animation(pf["idle"], 10),
-            "run_l": Animation(pf["run_l"], 6),
-            "run_r": Animation(pf["run_r"], 6),
-            "jump": Animation(pf["jump"], 8, loop=False),
-        }
-
-    def _build_enemy_animations(self):
-        ef = self.world_factory.load_enemy_frames()
-        return {"walk": Animation(ef["walk"], 8)}
 
     # --- Main Loop ---
     def run(self):
@@ -150,6 +140,9 @@ class Game:
 
         if not self.state.is_playing():
             return
+
+        # Продвигаем анимации View-слоя каждый кадр
+        self.sprite_cache.update(dt)
 
         # 2. Смерть игрока
         if self.player.is_dead:
@@ -240,8 +233,7 @@ class Game:
         """Возвращает игрока на точку спавна после потери жизни."""
         spawn_point = self.level.player_spawn
         new_player = self.world_factory.create_player(
-            spawn_point[0], spawn_point[1],
-            self.player_anims, self.event_bus
+            spawn_point[0], spawn_point[1], self.event_bus
         )
         # Заменяем игрока в self.entities (сохраняя порядок)
         for i, e in enumerate(self.entities):
@@ -269,8 +261,7 @@ class Game:
         # Создаём игрока
         spawn_point = self.level.player_spawn
         self.player = self.world_factory.create_player(
-            spawn_point[0], spawn_point[1],
-            self.player_anims, self.event_bus
+            spawn_point[0], spawn_point[1], self.event_bus
         )
 
         # ← ДОБАВИТЬ ЭТУ СТРОКУ:
