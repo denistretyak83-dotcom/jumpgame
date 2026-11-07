@@ -80,22 +80,36 @@ class FallDeathBehavior(DeathBehavior):
     """Смерть-падение вниз с нарастающей скоростью.
 
     Владелец — персонаж (должен иметь атрибуты vel_x, rect).
-    Параметры передаются явно из конфига (слабая связь). Падение завершается,
-    когда верх персонажа уходит ниже screen_height + margin."""
+    Параметры берутся из переданного death-конфига (R5), но можно
+    переопределить явными аргументами. Падение завершается, когда верх
+    персонажа уходит ниже screen_height + margin.
+    """
 
     def __init__(self,
                  owner: Optional[Any] = None,
-                 death_gravity: float = 1200,
+                 death_cfg=None,
+                 death_gravity: Optional[float] = None,
                  screen_height: int = 720,
-                 margin: int = 60,
-                 launch_vy: float = -400,
-                 fall_vy: float = -100):
+                 margin: Optional[int] = None,
+                 launch_vy: Optional[float] = None,
+                 fall_vy: Optional[float] = None):
+        # 1) Базовые значения берём из конфига (R5)
+        if death_cfg is not None:
+            base_gravity = getattr(death_cfg, 'gravity', 1200)
+            base_margin = getattr(death_cfg, 'margin', 60)
+            base_launch = getattr(death_cfg, 'launch_vy', -400)
+            base_fall = getattr(death_cfg, 'fall_vy', -100)
+        else:
+            base_gravity, base_margin = 1200, 60
+            base_launch, base_fall = -400, -100
+
+        # 2) Явные аргументы (если переданы) имеют приоритет над конфигом
         self.owner = owner
-        self.death_gravity = death_gravity
+        self.death_gravity = death_gravity if death_gravity is not None else base_gravity
         self.screen_height = screen_height
-        self.margin = margin
-        self.launch_vy = launch_vy
-        self.fall_vy = fall_vy
+        self.margin = margin if margin is not None else base_margin
+        self.launch_vy = launch_vy if launch_vy is not None else base_launch
+        self.fall_vy = fall_vy if fall_vy is not None else base_fall
         self.death_vy = 0.0
         self.active = False
 
@@ -120,7 +134,6 @@ class FallDeathBehavior(DeathBehavior):
     @property
     def is_active(self) -> bool:
         return self.active
-
 
 # ---------------------------------------------------------------------------
 # КОНКРЕТНЫЙ КОМПОНЕНТ: "вернуть копию через фабрику"

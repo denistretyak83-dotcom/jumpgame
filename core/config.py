@@ -20,6 +20,14 @@ class PhysicsConfig:
     max_fall: float = 2000.0
 
 @dataclass
+class DeathConfig:
+    """Параметры кинематографичной смерти-падения игрока (R5)."""
+    gravity: float = 1200.0
+    launch_vy: float = -400.0
+    fall_vy: float = -100.0
+    margin: int = 60
+
+@dataclass
 class PlayerConfig:
     width: int = 40
     height: int = 50
@@ -62,6 +70,7 @@ class Settings:
         # Загрузка базовых секций
         self.screen = ScreenConfig(**data.get("screen", {}))
         self.physics = PhysicsConfig(**data.get("physics", {}))
+        self.death = DeathConfig(**data.get("death", {}))
         self.player = PlayerConfig(**data.get("player", {}))
         self.enemy = EnemyConfig(**data.get("enemy", {}))
         self.game = GameConfig(**data.get("game", {}))

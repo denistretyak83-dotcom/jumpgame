@@ -28,6 +28,12 @@
     "jump_strength": -650,
     "max_fall": 1400
   },
+  "death": {
+    "gravity": 1200,
+    "launch_vy": -400,
+    "fall_vy": -100,
+    "margin": 60
+  },
   "enemy": {
     "width": 35,
     "height": 35,

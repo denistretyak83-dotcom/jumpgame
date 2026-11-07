@@ -7,15 +7,12 @@ class Player(BaseCharacter):
     def __init__(self, x, y, config=None, event_bus=None):
         cfg = config  # обязательный конфиг (DI) -- без синглтона
 
-        # --- DI: death_behavior собирается из конфига ---
+        # --- DI: death_behavior собирается из конфигурационной секции "death" (R5) ---
         death_behavior = None
         if cfg is not None:
             death_behavior = FallDeathBehavior(
-                death_gravity=getattr(cfg.physics, 'death_gravity', 1200),
-                screen_height=getattr(cfg.screen, 'height', 720),
-                margin=60,
-                launch_vy=-400,
-                fall_vy=-100,
+                death_cfg=cfg.death,                      # параметры смерти из settings.json
+                screen_height=cfg.screen.height,
             )
 
         super().__init__(x, y, cfg.player.width, cfg.player.height,
