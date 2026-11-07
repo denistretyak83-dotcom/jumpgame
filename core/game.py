@@ -15,10 +15,7 @@ from levels.level_manager import LevelManager
 from controllers.player_controller import PlayerController
 from audio.audio_listener import attach_audio_listener
 from audio.sound_manager import SoundManager
-from models.collision import (
-    check_coin_collision, check_enemy_collision,
-    check_flag_collision, check_fell_out
-)
+from models.collision_system import CollisionSystem
 from core.logger import logger
 from views.sprite_cache import SpriteCache
 
@@ -55,6 +52,12 @@ class Game:
         self.screen = pygame.display.set_mode((settings.screen.width, settings.screen.height))
         pygame.display.set_caption(settings.screen.caption)
         self.clock = pygame.time.Clock()
+
+        # ██ R6: единая система коллизий (все проверки за один проход)
+        self.collision_system = CollisionSystem(
+            screen_height=settings.screen.height,
+            fall_buffer=30,
+        )
 
         self.font = self.assets.get_font(settings.assets.font_size)
         self.small_font = self.assets.get_font(settings.assets.small_font_size)
@@ -170,11 +173,8 @@ class Game:
         for entity in self.entities:
             entity.update(dt, ctx, intent)
 
-        # 5. Логика игры
-        self._handle_coin_collection()
-        self._handle_enemy_collision()
-        self._handle_flag_collision()
-        self._handle_fall_out(dt)
+        # 5. Логика игры: все коллизии за один проход
+        self._apply_collisions(dt)
 
         # 6. Камера и счётчик
         self.camera.update(self.player.rect.x)
@@ -192,32 +192,37 @@ class Game:
         )
         # player_view рендер УДАЛЁН — отрисовка игрока внутри Renderer.draw_entities
 
-    def _handle_coin_collection(self):
-        hit_indices = check_coin_collision(self.coins, self.coin_collected, self.player.rect)
-        for idx in hit_indices:
-            if not self.coin_collected[idx]:
-                self.coin_collected[idx] = True
-                new_score = self.score + 1
-                self.event_bus.emit("score_changed", new_score)
-                self.event_bus.emit("coin_collected", new_score)
-                self.sounds.play_coin()
+    def _apply_collisions(self, dt):
+        """Централизованная обработка всех коллизий за один проход (R6)."""
+        c = self.collision_system.check(
+            self.player.rect,
+            self.coins, self.coin_collected,
+            [e for e in self.entities if e is not self.player],
+            self.level.flag_rect,
+        )
 
-    def _handle_enemy_collision(self):
-        enemies = [e for e in self.entities if e is not self.player]
-        hit = check_enemy_collision(self.player.rect, enemies)
-        if hit is not None:
+        # --- монета ---
+        if c.coin_index is not None:
+            self.coin_collected[c.coin_index] = True
+            new_score = self.score + 1
+            self.event_bus.emit("score_changed", new_score)
+            self.event_bus.emit("coin_collected", new_score)
+            self.sounds.play_coin()
+
+        # --- враг ---
+        if c.hit_enemy is not None:
             self.event_bus.emit("player_died")
             self.player.die(launch_up=False)
 
-    def _handle_flag_collision(self):
-        if check_flag_collision(self.player.rect, self.level.flag_rect):
+        # --- флаг ---
+        if c.hit_flag:
             self.event_bus.emit("level_won")
             self.won = True
             self.state.set(GameState.WON)
             self.sounds.play_win()
 
-    def _handle_fall_out(self, dt):
-        if check_fell_out(self.player.rect, settings.screen.height):
+        # --- падение ---
+        if c.fell_out:
             self.event_bus.emit("player_died")
             self.player.die(launch_up=False)
 
