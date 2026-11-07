@@ -45,6 +45,15 @@
     "death_respawn_offset": 60,
     "fade_speed": 255
   },
+  "animation": {
+    "idle_delay": 0.167,
+    "run_delay": 0.10,
+    "jump_delay": 0.13,
+    "walk_delay": 0.13
+},
+  "collision": {
+    "fall_buffer": 30
+},
   "assets": {
     "fonts_dir": "assets/fonts",
     "sprites_dir": "assets/sprites",

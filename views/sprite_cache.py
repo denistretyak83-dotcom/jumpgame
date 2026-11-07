@@ -46,45 +46,43 @@ class SpriteCache:
     # ------------------------------------------------------------------
 
     def _build_player_animations(self) -> dict:
+        anim = self._cfg.animation
         psize = (self._cfg.player.width, self._cfg.player.height)
 
-        # player_jump: [1.png (нейтральный), 2.png (направленный)]
         jump_all = self._assets.load_animation_frames("player_jump", 2, psize)
-
-        # Кадр 1 (index 0) -- прыжок на месте (нейтральный, без поворота)
         jump_neutral = jump_all[0:1] if jump_all else []
-        # Кадр 2 (index 1) -- направленный прыжок (flip по направлению)
         jump_directed = jump_all[1:2] if jump_all else []
 
         from views.animation import Animation
         return {
-            'idle': Animation(self._assets.load_animation_frames("player_idle", 3, psize), 10),
-            'run_left': Animation(self._assets.load_animation_frames("player_run/left", 4, psize), 6),
-            'run_right': Animation(self._assets.load_animation_frames("player_run/right", 4, psize), 6),
-            'jump_neutral': Animation(jump_neutral, 8, loop=False),  # на месте -- кадр 1
-            'jump': Animation(jump_directed, 8, loop=False),  # направленный -- кадр 2
+            'idle': Animation(
+                self._assets.load_animation_frames("player_idle", 3, psize),
+                anim.idle_delay),
+            'run_left': Animation(
+                self._assets.load_animation_frames("player_run/left", 4, psize),
+                anim.run_delay),
+            'run_right': Animation(
+                self._assets.load_animation_frames("player_run/right", 4, psize),
+                anim.run_delay),
+            'jump_neutral': Animation(jump_neutral, anim.jump_delay, loop=False),
+            'jump': Animation(jump_directed, anim.jump_delay, loop=False),
         }
 
     def _build_enemy_animations(self) -> dict:
-        """Собирает анимацию врага."""
+        anim = self._cfg.animation
         esize = (self._cfg.enemy.width, self._cfg.enemy.height)
         walk_frames = self._assets.load_animation_frames("enemy_walk", 4, esize)
 
         from views.animation import Animation
         return {
-            'walk': Animation(walk_frames, 8),
+            'walk': Animation(walk_frames, anim.walk_delay),
         }
 
-    def update(self, dt=None):
-        """Продвигает все анимации на один шаг кадра.
-
-        dt не используется (Animation.update() продвигает по frame_delay),
-        но принимается для будущих временных привязок.
-        Вызывается из Game каждый кадр.
-        """
+    def update(self, dt: float):
+        """Продвигает все анимации на dt секунд (вызывается каждый кадр)."""
         for view in (self._player_view, self._enemy_view):
             if view is None:
                 continue
             for anim in view.animations.values():
                 if anim is not None:
-                    anim.update()
+                    anim.update(dt)  # теперь dt реально используется

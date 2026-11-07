@@ -1,36 +1,28 @@
-"""Centralized Animation class -- single shared source for Player and Enemy.
-
-Animation objects are built from pre-loaded frame lists (list of pygame
-Surface) supplied by the views/controllers/factory layer.
-"""
+"""Animation -- кадровая анимация, привязанная к реальному времени (dt)."""
 
 
 class Animation:
-    def __init__(self, frames, frame_delay, loop=True):
-        self.frames = frames           # list of pre-loaded Surface
-        self.frame_delay = frame_delay # ticks between frame changes
-        self.loop = loop               # whether the animation repeats
+    def __init__(self, frames, frame_delay_s: float, loop=True):
+        self.frames = frames
+        self.frame_delay_s = frame_delay_s   # секунды
+        self.loop = loop
         self.index = 0
-        self.timer = 0
+        self.timer = 0.0
 
-    def update(self):
+    def update(self, dt: float):
         if not self.frames:
             return
-        self.timer += 1
-        if self.timer >= self.frame_delay:
-            self.timer = 0
+        self.timer += dt
+        while self.timer >= self.frame_delay_s:
+            self.timer -= self.frame_delay_s
             if self.index < len(self.frames) - 1:
                 self.index += 1
             elif self.loop:
                 self.index = 0
-            # if not loop: stay on the last frame
 
     def reset(self):
-        """Reset to the first frame (useful when starting a jump)."""
         self.index = 0
-        self.timer = 0
+        self.timer = 0.0
 
     def current(self):
-        if not self.frames:
-            return None
-        return self.frames[self.index]
+        return self.frames[self.index] if self.frames else None
