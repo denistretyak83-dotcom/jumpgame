@@ -4,20 +4,11 @@ from typing import Optional
 from models.behaviors import DeathBehavior, RespawnBehavior
 from models.entity import Entity
 from models.physics import PhysicsComponent
-from views.character_view import CharacterVisualState
 from core.event_bus import GameEvents
+from models.model_state import ModelVisualData
 
 
 class BaseCharacter(Entity, ABC):
-    """Тонкая обвязка-владелец: состояние + физика + ОПЦИОНАЛЬНЫЕ компоненты.
-
-    SRP: здесь только агрегация и проксирование. Смерть вынесена в
-    death_behavior, возрождение — в respawn_behavior. Модель не знает о
-    спрайтах/анимациях (это контракт Animatable для View-слоя).
-
-    Компоненты внедряются через конструктор (DI) с дефолтами None, поэтому
-    любой наследник может их не задавать.
-    """
 
     def __init__(self, x: int, y: int, width: int, height: int,
                  config=None, event_bus=None,
@@ -49,13 +40,11 @@ class BaseCharacter(Entity, ABC):
         ...
 
     @abstractmethod
-    def get_visual_state(self) -> CharacterVisualState:
-        """Возвращает ЛОГИЧЕСКОЕ состояние для отрисовки.
+    def get_visual_data(self) -> ModelVisualData:
+        """Возвращает чистые факты состояния модели (без pygame и View).
 
-        View (CharacterView) превратит его в кадр. Модель НЕ знает
-        о спрайтах, flip и размерах картинок.
+        View (CharacterView.build_state) превратит их в кадр.
         """
-        ...
 
     # ------------------------- физика -------------------------
     def apply_physics(self, dt, platforms) -> bool:

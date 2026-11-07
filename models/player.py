@@ -1,6 +1,6 @@
 from models.base_character import BaseCharacter
 from models.behaviors import FallDeathBehavior
-from views.character_view import CharacterVisualState
+from models.model_state import ModelVisualData
 from core.event_bus import GameEvents
 
 
@@ -60,35 +60,21 @@ class Player(BaseCharacter):
             self.rect.right = ctx.screen_width
 
     # ------------------------------------------------------------------
-    # Контракт: get_visual_state (чистое состояние, без пикселей)
+    # Контракт: get_visual_data (чистое состояние, без пикселей)
     # ------------------------------------------------------------------
 
-    def get_visual_state(self) -> CharacterVisualState:
-        # Направление взгляда: при движении -- по vel_x,
-        # стоя -- сохраняем последнее значение facing_left
+    def get_visual_data(self) -> ModelVisualData:
+        # Направление взгляда остаётся фактом модели (логика движения)
         facing = self.facing_left
         if self.vel_x < 0:
             facing = True
         elif self.vel_x > 0:
             facing = False
 
-        if self.is_dead:
-            anim_key = 'idle'
-        elif not self.on_ground:
-            if self.vel_y < 0:
-                # Прыжок вверх: направленный ИЛИ на месте
-                anim_key = 'jump' if self.vel_x != 0 else 'jump_neutral'
-            elif self.vel_x != 0:
-                anim_key = 'run'
-            else:
-                anim_key = 'idle'
-        else:
-            anim_key = 'run' if self.vel_x != 0 else 'idle'
-
-        return CharacterVisualState(
-            rect=self.rect,
-            facing_left=facing,
-            is_dead=self.is_dead,
-            anim_key=anim_key,
-            y_anchor='bottom',
+        return ModelVisualData(
+            x=self.rect.x, y=self.rect.y,
+            width=self.rect.width, height=self.rect.height,
+            vel_x=self.vel_x, vel_y=self.vel_y,
+            on_ground=self.on_ground, facing_left=facing,
+            is_dead=self.is_dead, anim_hint='idle',
         )

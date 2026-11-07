@@ -2,7 +2,7 @@
 
 Загружает спрайты из ассетов через AssetLoader и создаёт CharacterView
 для игрока и врагов. Развязывает модель и картинки: модель отдаёт
-только логические ключи анимации (see CharacterVisualState).
+только логические ключи анимации CharacterView.build_state.
 
 Анимации размечаются ЛОГИЧЕСКИМИ ключами:
   player: idle, run_left, run_right, jump

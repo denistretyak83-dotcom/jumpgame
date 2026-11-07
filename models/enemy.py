@@ -1,6 +1,6 @@
 from models.base_character import BaseCharacter
 from models.behaviors import CallableRespawnBehavior
-from views.character_view import CharacterVisualState
+from models.model_state import ModelVisualData
 
 
 class Enemy(BaseCharacter):
@@ -46,13 +46,11 @@ class Enemy(BaseCharacter):
 
     # models/enemy.py (добавьте ЭТОТ метод в класс Enemy)
 
-    def get_visual_state(self) -> CharacterVisualState:
-        """Враг: идёт ('walk'), лицо по vel_x, якорь LOW (по умолчанию)."""
-        facing = self.vel_x < 0  # движется влево -> смотрим влево
-        return CharacterVisualState(
-            rect=self.rect,
-            facing_left=facing,
-            is_dead=False,
-            anim_key='walk',  # у врага своя анимация ходьбы
-            # y_anchor НЕ задаём -> 'bottom', т.е. ноги снизу (по умолчанию)
+    def get_visual_data(self) -> ModelVisualData:
+        return ModelVisualData(
+            x=self.rect.x, y=self.rect.y,
+            width=self.rect.width, height=self.rect.height,
+            vel_x=self.vel_x, vel_y=self.vel_y,
+            on_ground=True, facing_left=self.vel_x < 0,
+            is_dead=False, anim_hint='walk',
         )

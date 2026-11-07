@@ -8,10 +8,7 @@
   SpriteCache.update(dt) в Game._update), а лишь отдаёт CharacterVisualState.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional
-
-from views.character_view import CharacterVisualState
-
+from models.model_state import ModelVisualData
 
 # ---------------------------------------------------------------------------
 # ПРОТОКОЛ АНИМАЦИЙ (View-слой)
@@ -19,22 +16,14 @@ from views.character_view import CharacterVisualState
 from typing import Any, Callable, Optional, Protocol, runtime_checkable
 
 
+
 @runtime_checkable
 class Animatable(Protocol):
-    """Структурный протокол View-слоя.
-
-    Протокол, а не ABC: модели НЕ обязаны наследоваться, достаточно
-    структурного соответствия (есть facing_left, is_dead, get_visual_state).
-    Это нужно, чтобы не блокировать инстанцирование Player/Enemy.
-    """
-
     @property
     def facing_left(self) -> bool: ...
-
     @property
     def is_dead(self) -> bool: ...
-
-    def get_visual_state(self) -> CharacterVisualState: ...
+    def get_visual_data(self) -> ModelVisualData: ...
 # ---------------------------------------------------------------------------
 # ПРОТОКОЛ СМЕРТИ (опциональный компонент)
 # ---------------------------------------------------------------------------

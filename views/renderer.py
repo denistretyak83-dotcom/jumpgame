@@ -57,17 +57,15 @@ class Renderer:
         return None
 
     def draw_entities(self, entities):
-        """Рисует сущности через get_visual_state() + CharacterView.render()."""
         for entity in entities:
             view = self._view_for(entity)
             if view is None:
                 continue
-
-            state = entity.get_visual_state()
+            data = entity.get_visual_data()  # факты модели
+            state = view.build_state(data)  # View строит DTO
             frame, x, y = view.render(state)
             if frame is None:
                 continue
-
             self.screen.blit(frame, (x, y))
 
     # ==================================================================

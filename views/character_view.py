@@ -9,7 +9,7 @@
 """
 from dataclasses import dataclass
 import pygame
-
+from models.model_state import ModelVisualData
 
 @dataclass
 class CharacterVisualState:
@@ -35,6 +35,35 @@ class CharacterView:
         """
         self.animations = animations
         self.is_dead_anim = is_dead_anim
+
+    # ---------- НОВОЕ: маппер фактов модели -> DTO View ----------
+    def build_state(self, data: ModelVisualData, y_anchor='bottom') -> CharacterVisualState:
+        """Строит CharacterVisualState из чистых фактов модели.
+
+        View решает, какую анимацию показать (resolve_anim).
+        """
+        return CharacterVisualState(
+            rect=pygame.Rect(data.x, data.y, data.width, data.height),
+            facing_left=data.facing_left,
+            is_dead=data.is_dead,
+            anim_key=self.resolve_anim(data),
+            y_anchor=y_anchor,
+        )
+
+    def resolve_anim(self, data: ModelVisualData) -> str:
+        if data.is_dead:
+            return self.is_dead_anim
+        # Враг (anim_hint='walk'): всегда ходит
+        if data.anim_hint == 'walk':
+            return 'walk'
+        # Игрок
+        if not data.on_ground:
+            if data.vel_y < 0:  # летит ВВЕРХ -> прыжок
+                return 'jump' if data.vel_x != 0 else 'jump_neutral'
+            # падает вниз или сходит с платформы -> продолжаем движение
+            return 'run' if data.vel_x != 0 else 'idle'
+        # на земле
+        return 'run' if data.vel_x != 0 else 'idle'
 
     def render(self, state: CharacterVisualState):
         anim = self._pick_anim(state)
