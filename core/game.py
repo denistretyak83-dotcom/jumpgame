@@ -59,7 +59,7 @@ class Game:
         # ██ R6: единая система коллизий (все проверки за один проход)
         self.collision_system = CollisionSystem(
             screen_height=settings.screen.height,
-            fall_buffer=30,
+            fall_buffer=settings.collision.fall_buffer,
         )
 
         self.font = self.assets.get_font(settings.assets.font_size)

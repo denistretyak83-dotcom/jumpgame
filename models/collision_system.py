@@ -1,12 +1,21 @@
-"""CollisionSystem -- centralizes all collision checks into a single pass (R6).
+"""CollisionSystem -- централизует все проверки коллизий в один проход (R6).
 
-Ср. со старым models/collision.py (чистые функции-проверки):
-теперь все проверки собраны в ОДНУ систему, которая за один вызов возвращает
-структурированный результат и НЕ мутирует игру/score/lives. Игровые правила
-остаются в Game (оркестраторе).
+Проверяет ВСЕ коллизии за один вызов и возвращает структурированный
+CollisionResult БЕЗ мутаций игры. Игровые правила остаются в Game.
+
+Исправления по аудиту:
+- Интерфейс Collidable (Protocol) вместо сырого duck-typing (ISP/DIP).
+- fall_buffer берётся из settings.json, а не захардкожен.
 """
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Protocol, runtime_checkable
+import pygame
+
+
+@runtime_checkable
+class Collidable(Protocol):
+    """Что нужно сущности, чтобы участвовать в коллизиях."""
+    rect: pygame.Rect
 
 
 @dataclass
@@ -25,12 +34,13 @@ class CollisionSystem:
     Сам НЕ эмитит события и не меняет score/lives — это делает Game.
     """
 
-    def __init__(self, screen_height: int, fall_buffer: int = 30):
+    def __init__(self, screen_height: int, fall_buffer: int):
         self.screen_height = screen_height
-        self.fall_buffer = fall_buffer
+        self.fall_buffer = fall_buffer   # теперь из settings, не магия
 
-    def check(self, player_rect, coins: List, coin_collected: List[bool],
-              enemies: List, flag_rect) -> CollisionResult:
+    def check(self, player_rect: pygame.Rect, coins: List[pygame.Rect],
+              coin_collected: List[bool], enemies: List[Collidable],
+              flag_rect: Optional[pygame.Rect]) -> CollisionResult:
         """Один проход: монеты -> враг -> флаг -> падение."""
         result = CollisionResult()
 
@@ -40,7 +50,7 @@ class CollisionSystem:
                 result.coin_index = i
                 break
 
-        # 2. Враг — первый пересечение (у врагов есть .rect)
+        # 2. Враг — первое пересечение (у врагов есть .rect -> Collidable)
         for enemy in enemies:
             if player_rect.colliderect(enemy.rect):
                 result.hit_enemy = enemy
