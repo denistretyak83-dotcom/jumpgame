@@ -1,13 +1,27 @@
-import pygame
 from models.base_character import BaseCharacter
+from models.behaviors import FallDeathBehavior
 from views.character_view import CharacterVisualState
 
 
 class Player(BaseCharacter):
     def __init__(self, x, y, config=None, event_bus=None):
         cfg = config  # обязательный конфиг (DI) -- без синглтона
+
+        # --- DI: death_behavior собирается из конфига ---
+        death_behavior = None
+        if cfg is not None:
+            death_behavior = FallDeathBehavior(
+                death_gravity=getattr(cfg.physics, 'death_gravity', 1200),
+                screen_height=getattr(cfg.screen, 'height', 720),
+                margin=60,
+                launch_vy=-400,
+                fall_vy=-100,
+            )
+
         super().__init__(x, y, cfg.player.width, cfg.player.height,
-                         config=cfg, event_bus=event_bus)
+                         config=cfg, event_bus=event_bus,
+                         death_behavior=death_behavior,   # киноматографичное падение
+                         respawn_behavior=None)           # базовое поведение (вернуть self)
 
     # ------------------------------------------------------------------
     # Контракт: update (intent от контроллера)
