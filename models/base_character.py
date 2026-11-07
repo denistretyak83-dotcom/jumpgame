@@ -20,13 +20,11 @@ class BaseCharacter(Entity, ABC):
 
     def __init__(self, x: int, y: int, width: int, height: int,
                  config=None, event_bus=None,
-                 death_gravity: float = 1200,                    # совместимость старых вызовов
                  death_behavior: Optional[DeathBehavior] = None,
                  respawn_behavior: Optional[RespawnBehavior] = None):
         super().__init__(x, y, width, height)
         self.event_bus = event_bus
         self._cfg = config
-        self.death_gravity = death_gravity   # остаётся на случай, если кто-то снаружи дергал напрямую
 
         # --- состояние ---
         self.vel_x = 0.0
