@@ -1,6 +1,7 @@
 from models.base_character import BaseCharacter
 from models.behaviors import FallDeathBehavior
 from views.character_view import CharacterVisualState
+from core.event_bus import GameEvents
 
 
 class Player(BaseCharacter):
@@ -45,12 +46,12 @@ class Player(BaseCharacter):
             self.vel_y = self._cfg.physics.jump_strength
             self.on_ground = False
             if self.event_bus:
-                self.event_bus.emit('player.jump')
+                self.event_bus.emit(GameEvents.PLAYER_JUMP)
 
         # --- 4. Физика ---
         head_bumped = self.apply_physics(dt, ctx.platforms)
         if head_bumped and self.event_bus:
-            self.event_bus.emit('player.bump')
+            self.event_bus.emit(GameEvents.PLAYER_BUMP)
 
         # --- 5. Границы экрана ---
         if self.rect.left < 0:

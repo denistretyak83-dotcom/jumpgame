@@ -8,9 +8,10 @@ from views.sprite_cache import SpriteCache
 
 
 class Renderer:
-    def __init__(self, screen, sprite_cache, coin_icon, font, small_font, config):
+    def __init__(self, screen, sprite_cache, coin_icon, font, small_font, config,
+                 view_registry=None):
         self.screen = screen
-        self.sprite_cache = sprite_cache      # ← View-слой анимаций
+        self.sprite_cache = sprite_cache
         self.coin_icon = coin_icon
         self.font = font
         self.small_font = small_font
@@ -21,6 +22,14 @@ class Renderer:
 
         self._platform_surfaces = {}
         self.current_platforms = []
+
+        # Реестр: тип сущности -> фабрика вью (регистрируется извне)
+        self._view_registry = view_registry or {}
+
+    # --- новый метод: регистрация вью для типа сущности ---
+    def register_view(self, entity_cls, view_factory):
+        """OCP: новый тип сущности = регистрация, без правки Renderer."""
+        self._view_registry[entity_cls] = view_factory
 
     # --- хелперы платформ ---
     def _platform_surface(self, width, height):
@@ -41,18 +50,10 @@ class Renderer:
     # View получает ЛОГИЧЕСКОЕ состояние от модели и превращает его в кадр.
     # ==================================================================
     def _view_for(self, entity):
-        """Возвращает CharacterView для конкретной сущности.
-
-        Простой роутер по типу. Если появится больше типов --
-        вынести в реестр (entity_type -> view).
-        """
-        from models.player import Player
-        from models.enemy import Enemy
-
-        if isinstance(entity, Player):
-            return self.sprite_cache.player_view()
-        if isinstance(entity, Enemy):
-            return self.sprite_cache.enemy_view()
+        """Возвращает вью по типу из реестра (без isinstance-каскада)."""
+        for entity_cls, view_factory in self._view_registry.items():
+            if isinstance(entity, entity_cls):
+                return view_factory()
         return None
 
     def draw_entities(self, entities):

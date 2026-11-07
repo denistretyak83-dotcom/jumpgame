@@ -5,6 +5,7 @@
 
 Вызывается из Game.__init__ через attach_audio_listener(event_bus, sounds).
 """
+from core.event_bus import GameEvents
 
 
 def attach_audio_listener(event_bus, sounds):
@@ -17,6 +18,6 @@ def attach_audio_listener(event_bus, sounds):
     if not sounds:
         return
 
-    event_bus.subscribe('player.jump', sounds.play_jump)
-    event_bus.subscribe('player.death', sounds.play_death)
-    event_bus.subscribe('player.bump', sounds.play_bump)
+    event_bus.subscribe(GameEvents.PLAYER_JUMP, sounds.play_jump)
+    event_bus.subscribe(GameEvents.PLAYER_DIED, sounds.play_death)
+    event_bus.subscribe(GameEvents.PLAYER_BUMP, sounds.play_bump)

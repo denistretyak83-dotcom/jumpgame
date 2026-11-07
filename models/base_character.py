@@ -5,6 +5,7 @@ from models.behaviors import DeathBehavior, RespawnBehavior
 from models.entity import Entity
 from models.physics import PhysicsComponent
 from views.character_view import CharacterVisualState
+from core.event_bus import GameEvents
 
 
 class BaseCharacter(Entity, ABC):
@@ -70,7 +71,7 @@ class BaseCharacter(Entity, ABC):
         if self.death_behavior is not None:
             self.death_behavior.die(launch_up)
         if self.event_bus:
-            self.event_bus.emit('character.death', self)
+            self.event_bus.emit(GameEvents.CHARACTER_DEATH, self)
 
     def update_death(self, dt: float) -> bool:
         """Тикает сцену смерти. Возвращает True, когда она завершена (выпал за экран)."""
