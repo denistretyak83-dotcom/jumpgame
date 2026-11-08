@@ -130,4 +130,4 @@ class Renderer:
                                                  self.config.colors['BLACK'])
                 screen.blit(restart, (self.config.screen.width // 2 - 110,
                                       self.config.screen.height // 2))
-            draw_pixelated_fade(screen, fade_level, grid=4)
+            draw_pixelated_fade(screen, fade_level, self.config, grid=4)

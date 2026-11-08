@@ -89,12 +89,10 @@ class Game:
         self.respawn_service = RespawnService(self.world_factory)
 
         # --- Level Management ---
-        self.level_manager = LevelManager(self.root, entity_factories={
-            "enemy": lambda d: self.world_factory.create_enemy(d),
-            "platform": lambda d: pygame.Rect(d["x"], d["y"], d["w"], d["h"]),
-            "flag": lambda d: pygame.Rect(d["x"], d["y"], d["w"], d["h"]),
-            "coin": lambda d: pygame.Rect(d["x"], d["y"], d["w"], d["h"]),
-        })
+        self.level_manager = LevelManager(
+            self.root,
+            entity_factories=self.world_factory.entity_factories(),
+        )
 
         # --- Game State Vars ---
 
@@ -246,7 +244,7 @@ class Game:
 
     def _update_game_over_fade(self, dt):
         if self.fade_direction == 1:
-            self.fade_level += settings.game.fade_speed * dt
+            self.fade_level += self.config.game.fade_speed * dt
             if self.fade_level >= 255:
                 self.fade_level = 255
                 self.fade_direction = 0
