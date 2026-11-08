@@ -4,6 +4,9 @@
 Превращает объект уровня (dict из JSON) в инстанс модели. Точка расширения
 (OCP): новые типы добавляются через register() без правки существующего
 кода. Абстрагирует LevelManager от конкретных классов (DIP).
+
+Также владеет EnemyBehaviorRegistry (DI) и передаёт его созданным врагам,
+чтобы типы поведения (walker/chaser/...) были известны всем экземплярам Enemy.
 """
 from typing import Any, Callable, Dict
 
@@ -11,6 +14,11 @@ import pygame
 
 from models.player import Player
 from models.enemy import Enemy
+from models.enemy_behavior import (
+    EnemyBehaviorRegistry,
+    WalkerBehavior,
+    ChaserBehavior,
+)
 from core.config import Settings
 
 # протокол фабрики одного объекта
@@ -25,10 +33,22 @@ class WorldFactory:
         self.config = config or Settings()
         # Внутренний реестр "тип -> фабрика"
         self._registry: Dict[str, ObjectFactory] = registry or {}
+
+        # Реестр поведений врагов (DI): владеет здесь и передаёт в Enemy.
+        self.enemy_behavior_registry = EnemyBehaviorRegistry()
+        self._register_enemy_behaviors()
+
         self._register_defaults()
 
+    def _register_enemy_behaviors(self) -> None:
+        """Зарегистрировать дефолтные поведения врагов (OCP-точка)."""
+        self.enemy_behavior_registry.register("walker", WalkerBehavior)
+        # Алиас совместимости: если поведение указано как "enemy" -> walker
+        self.enemy_behavior_registry.register("enemy", WalkerBehavior)
+        self.enemy_behavior_registry.register("chaser", ChaserBehavior)
+
     # ------------------------------------------------------------------
-    # Реестр (OCP)
+    # Реестр объектов (OCP)
     # ------------------------------------------------------------------
 
     def register(self, obj_type: str, factory: ObjectFactory) -> None:
@@ -83,7 +103,11 @@ class WorldFactory:
     # ------------------------------------------------------------------
 
     def create_enemy(self, data: dict) -> Enemy:
-        """Строит врага из данных уровня (без animations -- теперь View)."""
+        """Строит врага (data-driven + DI registry поведения).
+
+        Поведение выбирается Enemy по ключу "behavior" из enemy_data;
+        "left"/"right" — патрульные границы (становятся bound_left/right).
+        """
         return Enemy(
             x=data["x"],
             y=data["y"],
@@ -91,8 +115,8 @@ class WorldFactory:
             right=data["right"],
             config=self.config,
             enemy_data=data,
+            behavior_registry=self.enemy_behavior_registry,
         )
-
 
     def create_player(self, x, y, event_bus=None) -> Player:
         """Build Player with spawn coords. event_bus для эмита событий."""

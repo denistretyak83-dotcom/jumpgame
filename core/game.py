@@ -176,9 +176,11 @@ class Game:
         intent = self.controller.handle_input(keys)
 
         # Контекст кадра (больше не содержит keys)
-        ctx = GameContext(platforms=self.level.platforms,
-                          screen_width=self.config.screen.width)
-
+        ctx = GameContext(
+            platforms=self.level.platforms,
+            screen_width=self.config.screen.width,
+            player_x=self.player.rect.x if self.player else 0.0,
+        )
         # 4. ПОЛИМОРФИЗМ: единый цикл обновления всех сущностей
         #    Player использует intent, Enemy его игнорирует.
         for entity in self.entities:

@@ -10,9 +10,9 @@
 
 
 class GameContext:
-    def __init__(self, platforms, screen_width):
-        self.platforms = platforms        # список rect'ов платформ
-        self.screen_width = screen_width  # ширина экрана (для границ)
-
+    def __init__(self, platforms, screen_width, player_x=0.0):
+        self.platforms = platforms
+        self.screen_width = screen_width
+        self.player_x = float(player_x)  # позиция игрока (для поведения chaser)
     # Контекст легко расширить новыми полями
     # (например: self.time_scale, self.animations, self.scene...).

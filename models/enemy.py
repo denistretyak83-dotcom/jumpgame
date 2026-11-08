@@ -1,38 +1,43 @@
 from models.base_character import BaseCharacter
 from models.behaviors import CallableRespawnBehavior
+from models.enemy_behavior import EnemyBehavior, DEFAULT_BEHAVIOR_REGISTRY
 from models.model_state import ModelVisualData
 
 
 class Enemy(BaseCharacter):
-    def __init__(self, x, y, left, right, config, enemy_data=None):
+    """Враг: движение управляется поведением (композиция, OCP)."""
+
+    def __init__(self, x, y, left, right, config, enemy_data=None,
+                 behavior_registry=None):
+        data = enemy_data or {}
+        # Поведение — по ключу "behavior", не путать с "type" сущности.
+        self.behavior_type = data.get("behavior", "walker")
+
         super().__init__(x, y, config.enemy.width, config.enemy.height,
-                         config=config,
-                         death_behavior=None,
-                         respawn_behavior=None)
-        # Границы патруля. НЕ используем имена left/right, т.к. Entity
-        # теперь имеет properties left/right, делегирующие в pygame.Rect.
+                         config=config, death_behavior=None, respawn_behavior=None)
+
         self.bound_left = left
         self.bound_right = right
         self.spawn_x = x
         self.spawn_y = y
         self.vel_x = config.enemy.speed
         self.pos_x = float(x)
+
+        self._behavior_registry = behavior_registry or DEFAULT_BEHAVIOR_REGISTRY
+        self.behavior: EnemyBehavior = self._behavior_registry.create(
+            self.behavior_type)
+        self.behavior.attach(self)
+
         self.respawn_behavior = CallableRespawnBehavior(
             lambda: Enemy(self.spawn_x, self.spawn_y,
-                          self.bound_left, self.bound_right, self._cfg)
+                          self.bound_left, self.bound_right,
+                          self._cfg, enemy_data=data,
+                          behavior_registry=self._behavior_registry)
         )
 
     def update(self, dt, ctx=None, intent=None):
-        self.pos_x += self.vel_x * dt
-        if self.pos_x < self.bound_left:
-            overrun = self.bound_left - self.pos_x
-            self.pos_x = self.bound_left + overrun
-            self.vel_x = abs(self.vel_x)
-        elif self.pos_x + self.rect.width > self.bound_right:
-            overrun = (self.pos_x + self.rect.width) - self.bound_right
-            self.pos_x = self.bound_right - self.rect.width - overrun
-            self.vel_x = -abs(self.vel_x)
-        self.rect.x = int(round(self.pos_x))
+        """Делегирует ежекадровую логику прикреплённому поведению."""
+        self.behavior.update(self, dt, ctx, intent)
 
     def get_visual_data(self) -> ModelVisualData:
         return ModelVisualData(
