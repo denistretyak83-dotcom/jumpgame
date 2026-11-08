@@ -1,15 +1,17 @@
 """Camera -- parallax scrolling for background layers."""
-from core.config import settings
 
 
 class ParallaxCamera:
-    """Computes parallax layer offsets from the player x position."""
+    """Computes parallax layer offsets from the player x position.
 
-    def __init__(self):
+    DI (R3): экранные размеры инжектируются через конструктор, а не
+    тянутся из глобального settings.
+    """
+
+    def __init__(self, screen_width, screen_height):
         self.player_x = 0.0
-        # ⚠️ ИЗМЕНЕНИЕ: Доступ теперь через объект screen
-        self.width = settings.screen.width
-        self.height = settings.screen.height
+        self.width = screen_width
+        self.height = screen_height
 
     def update(self, player_x):
         """Record the current world player x used for parallax."""

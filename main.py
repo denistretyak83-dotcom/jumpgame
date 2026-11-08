@@ -1,15 +1,27 @@
-"""Jump & Reach the Flag -- MVC entry point (thin)."""
-import pathlib
+"""Точка входа приложения.
+
+DI-связка (R3): единственное место создания Settings() и GameLogger().
+Никаких глобальных импортов настроек/логгера — все зависимости инжектируются
+через конструкторы.
+"""
 import pygame
-from core.config import settings
+
+from core.config import Settings          # класс, а не глобальный экземпляр
 from core.logger import GameLogger
 from core.game import Game
 
 
 def main():
     pygame.init()
+
+    # 1) Создаём конфигурацию приложения (читает settings.json)
+    settings = Settings()
+
+    # 2) Логгер — с настройками ротации из конфига
     logger = GameLogger(config=settings.logging)
-    game = Game(logger=logger)
+
+    # 3) Инжектируем И config, И logger в игру
+    game = Game(config=settings, logger=logger)
     game.run()
     return 0
 

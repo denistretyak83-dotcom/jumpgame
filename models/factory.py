@@ -1,12 +1,12 @@
 from models.player import Player
 from models.enemy import Enemy
-from core.config import settings
+from core.config import Settings
 
 
 class WorldFactory:
     def __init__(self, asset_loader, config=None):
         self.assets = asset_loader
-        self.config = config or settings
+        self.config = config or Settings()
 
     # ------------------------------------------------------------------
     # Data-Driven Methods (used by LevelBuilder)

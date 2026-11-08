@@ -2,16 +2,18 @@
 
 Uses core.camera.ParallaxCamera internally for wrapped layer offsets. Provides
 both update(player_x) and draw(screen, player_x).
+
+DI (R3): размеры экрана инжектируются через конструктор (ParallaxCamera
+также теперь получает размеры, а не читает глобальный settings).
 """
 import pygame
-from core.config import settings
 from core.camera import ParallaxCamera
 
 
 class RetroBackground:
-    def __init__(self):
-        self.width = settings.screen.width
-        self.height = settings.screen.height
+    def __init__(self, screen_width, screen_height):
+        self.width = screen_width
+        self.height = screen_height
         self.sky_top = (108, 156, 252)
         self.sky_bottom = (168, 200, 255)
 
@@ -23,7 +25,11 @@ class RetroBackground:
         self.near_speed = 0.15
         self.cloud_speed = 0.025
 
-        self.camera = ParallaxCamera()
+        # DI: ParallaxCamera теперь требует размеры
+        self.camera = ParallaxCamera(
+            screen_width=self.width,
+            screen_height=self.height,
+        )
 
     # ---------------- layer construction (verbatim from original) ----------
     def _make_mountains_far(self):

@@ -121,7 +121,3 @@ class Settings:
             except ValueError:
                 pass
         return parsed
-
-
-# Экземпляр настроек по умолчанию
-settings = Settings()

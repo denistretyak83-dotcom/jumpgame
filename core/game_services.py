@@ -1,14 +1,9 @@
-"""Выделенные сервисы состояния игры (SRP: каждый отвечает за одно).
-
-Вынесены из Game-оркестратора, чтобы разгрузить его от бизнес-логики
-жизней/очков/респауна. Game только координирует их вызовы.
-"""
+"""Выделенные сервисы состояния игры (SRP: каждый отвечает за одно)."""
 from typing import List, Optional
+from core.event_bus import GameEvents
 
 
 class LifeManager:
-    """Владение жизнями: декремент, game-over-детект, события."""
-
     def __init__(self, initial_lives: int, event_bus):
         self._lives = initial_lives
         self._event_bus = event_bus
@@ -18,9 +13,8 @@ class LifeManager:
         return self._lives
 
     def lose_life(self) -> bool:
-        """-1 жизнь. Возвращает True, если жизни кончились (game over)."""
         self._lives -= 1
-        self._event_bus.emit("lives_changed", self._lives)
+        self._event_bus.emit(GameEvents.LIVES_CHANGED, self._lives)
         return self._lives <= 0
 
     def reset(self, initial_lives: int) -> None:
@@ -28,8 +22,6 @@ class LifeManager:
 
 
 class ScoreManager:
-    """Очки: инкремент и эмиссия событий."""
-
     def __init__(self, event_bus):
         self._score = 0
         self._event_bus = event_bus
@@ -40,7 +32,7 @@ class ScoreManager:
 
     def add_points(self, points: int = 1) -> None:
         self._score += points
-        self._event_bus.emit("score_changed", self._score)
+        self._event_bus.emit(GameEvents.SCORE_CHANGED, self._score)
 
     def reset(self) -> None:
         self._score = 0

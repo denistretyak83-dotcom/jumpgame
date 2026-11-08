@@ -2,7 +2,7 @@
 import pathlib
 import pygame
 
-from core.config import settings
+from core.config import Settings
 from core.event_bus import EventBus, GameEvents
 from core.state_manager import StateManager, GameState
 from core.camera import ParallaxCamera
@@ -23,11 +23,11 @@ from models.enemy import Enemy
 
 
 class Game:
-    def __init__(self, logger=None, root_dir=None):
+    def __init__(self, config=None, logger=None, root_dir=None):
         if root_dir is None:
             root_dir = str(pathlib.Path(__file__).resolve().parent.parent)
         self.root = pathlib.Path(root_dir)
-        self.config = settings
+        self.config = config or Settings()
 
         # DI: логгер инжектируется; создаётся из settings.logging, если не передан (R3)
         self.logger = logger or GameLogger(config=self.config.logging)
@@ -35,7 +35,10 @@ class Game:
         # --- Core Systems ---
         self.event_bus = EventBus()
         self.state = StateManager()
-        self.camera = ParallaxCamera()
+        self.camera = ParallaxCamera(
+            screen_width=self.config.screen.width,
+            screen_height=self.config.screen.height,
+        )
 
         self.logger.attach(
             self.event_bus,
@@ -48,25 +51,25 @@ class Game:
         )
 
         # --- Assets & Audio ---
-        self.assets = AssetLoader(str(self.root))
+        self.assets = AssetLoader(str(self.root), self.config)
         self.sounds = SoundManager(self.assets.sounds_abs)
 
         self.controller = PlayerController()
         attach_audio_listener(self.event_bus, self.sounds)
 
         # --- Screen & Renderer ---
-        self.screen = pygame.display.set_mode((settings.screen.width, settings.screen.height))
-        pygame.display.set_caption(settings.screen.caption)
+        self.screen = pygame.display.set_mode((self.config.screen.width, self.config.screen.height))
+        pygame.display.set_caption(self.config.screen.caption)
         self.clock = pygame.time.Clock()
 
         # ██ R6: единая система коллизий (все проверки за один проход)
         self.collision_system = CollisionSystem(
-            screen_height=settings.screen.height,
-            fall_buffer=settings.collision.fall_buffer,
+            screen_height=self.config.screen.height,
+            fall_buffer=self.config.collision.fall_buffer,
         )
 
-        self.font = self.assets.get_font(settings.assets.font_size)
-        self.small_font = self.assets.get_font(settings.assets.small_font_size)
+        self.font = self.assets.get_font(self.config.assets.font_size)
+        self.small_font = self.assets.get_font(self.config.assets.small_font_size)
         self.coin_icon = self._make_coin_icon()
 
         # ██ НОВОЕ: SpriteCache (View-слой анимаций) вместо player_anims/enemy_anims
@@ -108,7 +111,7 @@ class Game:
         self.player_view = None  # (удалено — сущности рисует Renderer через get_render_info)
 
         # Event Listeners
-        self.life_manager = LifeManager(settings.game.lives, self.event_bus)
+        self.life_manager = LifeManager(self.config.game.lives, self.event_bus)
         self.score_manager = ScoreManager(self.event_bus)
 
         # Initialize
@@ -125,7 +128,7 @@ class Game:
     def run(self):
         running = True
         while running:
-            dt = self.clock.tick(settings.screen.fps) / 1000.0
+            dt = self.clock.tick(self.config.screen.fps) / 1000.0
             running = self._process_events()
             self._update(dt)
             self._draw()
@@ -176,7 +179,7 @@ class Game:
 
         # Контекст кадра (больше не содержит keys)
         ctx = GameContext(platforms=self.level.platforms,
-                          screen_width=settings.screen.width)
+                          screen_width=self.config.screen.width)
 
         # 4. ПОЛИМОРФИЗМ: единый цикл обновления всех сущностей
         #    Player использует intent, Enemy его игнорирует.
@@ -264,7 +267,7 @@ class Game:
 
     def reset_run_state(self):
         """Полный перезапуск игры (кнопка R после победы/поражения)."""
-        self.life_manager.reset(settings.game.lives)
+        self.life_manager.reset(self.config.game.lives)
         self.score_manager.reset()
         self.frame_count = 0
         self.fade_level = 0
