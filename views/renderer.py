@@ -52,8 +52,13 @@ class Renderer:
     # НОВЫЙ МЕТОД: единообразная отрисовка сущностей (ПОЛИМОРФИЗМ)
     # View получает ЛОГИЧЕСКОЕ состояние от модели и превращает его в кадр.
     # ==================================================================
-    def _view_for(self, entity):
-        """Возвращает вью по типу из реестра (без isinstance-каскада)."""
+    def _view_for(self, entity, data=None):
+        if data is None:
+            data = entity.get_visual_data()
+        # Если есть anim_group (враг) — вью по sprite-ключу
+        if data.anim_group is not None:
+            return self.sprite_cache.enemy_view(data.anim_group)
+        # Иначе — по классу из реестра (Player)
         for entity_cls, view_factory in self._view_registry.items():
             if isinstance(entity, entity_cls):
                 return view_factory()
@@ -61,10 +66,10 @@ class Renderer:
 
     def draw_entities(self, entities):
         for entity in entities:
-            view = self._view_for(entity)
+            data = entity.get_visual_data()
+            view = self._view_for(entity, data)  # передаём data
             if view is None:
                 continue
-            data = entity.get_visual_data()  # факты модели
             state = view.build_state(data)  # View строит DTO
             frame, x, y = view.render(state)
             if frame is None:

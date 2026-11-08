@@ -9,7 +9,7 @@
   enemy:  walk
 """
 from views.character_view import CharacterView
-
+from views.animation import Animation
 
 class SpriteCache:
     """Содержит CharacterView для каждого типа сущности."""
@@ -23,7 +23,7 @@ class SpriteCache:
         self._assets = asset_loader
         self._cfg = config
         self._player_view = None
-        self._enemy_view = None
+        self._enemy_views = {}   # кэш вью врагов по sprite_key
 
     # ------------------------------------------------------------------
     # Публичный доступ к View для сущностей
@@ -35,11 +35,10 @@ class SpriteCache:
             self._player_view = CharacterView(self._build_player_animations())
         return self._player_view
 
-    def enemy_view(self) -> CharacterView:
-        """Возвращает (и кэширует) CharacterView врага."""
-        if self._enemy_view is None:
-            self._enemy_view = CharacterView(self._build_enemy_animations())
-        return self._enemy_view
+    def enemy_view(self, sprite_key='walker'):
+        if sprite_key not in self._enemy_views:
+            self._enemy_views[sprite_key] = CharacterView(self._build_enemy_animations())
+        return self._enemy_views[sprite_key]
 
     # ------------------------------------------------------------------
     # Сборка анимаций из ассетов
@@ -53,7 +52,6 @@ class SpriteCache:
         jump_neutral = jump_all[0:1] if jump_all else []
         jump_directed = jump_all[1:2] if jump_all else []
 
-        from views.animation import Animation
         return {
             'idle': Animation(
                 self._assets.load_animation_frames("player_idle", 3, psize),
@@ -80,9 +78,16 @@ class SpriteCache:
 
     def update(self, dt: float):
         """Продвигает все анимации на dt секунд (вызывается каждый кадр)."""
-        for view in (self._player_view, self._enemy_view):
+        # Игрок (одиночный вью)
+        if self._player_view is not None:
+            for anim in self._player_view.animations.values():
+                if anim is not None:
+                    anim.update(dt)
+
+        # Враги: перебираем ВСЕ вью из словаря (по каждому sprite_key)
+        for view in self._enemy_views.values():
             if view is None:
                 continue
             for anim in view.animations.values():
                 if anim is not None:
-                    anim.update(dt)  # теперь dt реально используется
+                    anim.update(dt)

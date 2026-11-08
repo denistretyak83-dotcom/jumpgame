@@ -22,6 +22,7 @@ class Enemy(BaseCharacter):
         self.spawn_y = y
         self.vel_x = config.enemy.speed
         self.pos_x = float(x)
+        self.sprite_key = data.get("sprite", "walker")
 
         self._behavior_registry = behavior_registry or DEFAULT_BEHAVIOR_REGISTRY
         self.behavior: EnemyBehavior = self._behavior_registry.create(
@@ -45,5 +46,5 @@ class Enemy(BaseCharacter):
             width=self.rect.width, height=self.rect.height,
             vel_x=self.vel_x, vel_y=self.vel_y,
             on_ground=True, facing_left=self.vel_x < 0,
-            is_dead=False, anim_hint='walk',
+            is_dead=False, anim_hint='walk', anim_group=self.sprite_key
         )
