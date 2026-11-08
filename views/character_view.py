@@ -51,19 +51,13 @@ class CharacterView:
         )
 
     def resolve_anim(self, data: ModelVisualData) -> str:
+        """Ключ анимации теперь предоставляет состояние машины (в модели).
+
+        View просто доверяет подсказке из модели.
+        """
         if data.is_dead:
             return self.is_dead_anim
-        # Враг (anim_hint='walk'): всегда ходит
-        if data.anim_hint == 'walk':
-            return 'walk'
-        # Игрок
-        if not data.on_ground:
-            if data.vel_y < 0:  # летит ВВЕРХ -> прыжок
-                return 'jump' if data.vel_x != 0 else 'jump_neutral'
-            # падает вниз или сходит с платформы -> продолжаем движение
-            return 'run' if data.vel_x != 0 else 'idle'
-        # на земле
-        return 'run' if data.vel_x != 0 else 'idle'
+        return data.anim_hint
 
     def render(self, state: CharacterVisualState):
         anim = self._pick_anim(state)
