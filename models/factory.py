@@ -18,6 +18,7 @@ from models.enemy_behavior import (
     EnemyBehaviorRegistry,
     WalkerBehavior,
     ChaserBehavior,
+    FlyerBehavior
 )
 from core.config import Settings
 
@@ -46,6 +47,7 @@ class WorldFactory:
         # Алиас совместимости: если поведение указано как "enemy" -> walker
         self.enemy_behavior_registry.register("enemy", WalkerBehavior)
         self.enemy_behavior_registry.register("chaser", ChaserBehavior)
+        self.enemy_behavior_registry.register("flyer", FlyerBehavior)
 
     # ------------------------------------------------------------------
     # Реестр объектов (OCP)

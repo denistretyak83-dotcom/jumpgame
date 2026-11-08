@@ -18,7 +18,8 @@
   ],
   "enemies": [
     { "x": 320, "y": 510, "left": 310, "right": 680, "behavior": "chaser", "sprite": "chaser" },
-    { "x": 440, "y": 310, "left": 430, "right": 560, "behavior": "walker", "sprite": "walker" }
+    { "x": 440, "y": 310, "left": 430, "right": 560, "behavior": "walker", "sprite": "walker" },
+    { "x": 250, "y": 320, "left": 200, "right": 400, "behavior": "flyer", "sprite": "flyer" }
   ],
   "flag": {"x": 700, "y": 300, "w": 30, "h": 60}
 }
