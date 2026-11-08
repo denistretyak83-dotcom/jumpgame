@@ -50,10 +50,10 @@
     "run_delay": 0.10,
     "jump_delay": 0.13,
     "walk_delay": 0.13
-},
+  },
   "collision": {
     "fall_buffer": 30
-},
+  },
   "assets": {
     "fonts_dir": "assets/fonts",
     "sprites_dir": "assets/sprites",
@@ -62,5 +62,10 @@
     "small_font_size": 12,
     "font_name": "PressStart2P-Regular.ttf",
     "bgm_file": "bgm_song.ogg"
+  },
+  "logging": {
+    "log_dir": "logs",
+    "max_age_days": 7,
+    "max_files": 10
   }
 }

@@ -79,6 +79,12 @@ class CollisionConfig:
     """Параметры системы коллизий."""
     fall_buffer: int = 30
 
+@dataclass
+class LogConfig:
+    """Настройки логирования и ротации лог-файлов (R-лог)."""
+    log_dir: str = "logs"
+    max_age_days: int = 7      # хранить только за последние N дней
+    max_files: int = 10        # предохранитель: максимум файлов
 
 class Settings:
     def __init__(self, path="config/settings.json"):
@@ -99,6 +105,7 @@ class Settings:
         self.assets = AssetsConfig(**data.get("assets", {}))
         self.animation = AnimationConfig(**data.get("animation", {}))
         self.collision = CollisionConfig(**data.get("collision", {}))
+        self.logging = LogConfig(**data.get("logging", {}))
 
         # Парсинг цветов (Возвращает словарь)
         self.colors = self._parse_colors(data.get("colors", {}))

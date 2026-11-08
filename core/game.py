@@ -16,25 +16,28 @@ from controllers.player_controller import PlayerController
 from audio.audio_listener import attach_audio_listener
 from audio.sound_manager import SoundManager
 from models.collision_system import CollisionSystem
-from core.logger import logger
+from core.logger import GameLogger
 from views.sprite_cache import SpriteCache
 from models.player import Player
 from models.enemy import Enemy
 
 
 class Game:
-    def __init__(self, root_dir=None):
+    def __init__(self, logger=None, root_dir=None):
         if root_dir is None:
             root_dir = str(pathlib.Path(__file__).resolve().parent.parent)
         self.root = pathlib.Path(root_dir)
         self.config = settings
+
+        # DI: логгер инжектируется; создаётся из settings.logging, если не передан (R3)
+        self.logger = logger or GameLogger(config=self.config.logging)
 
         # --- Core Systems ---
         self.event_bus = EventBus()
         self.state = StateManager()
         self.camera = ParallaxCamera()
 
-        logger.attach(
+        self.logger.attach(
             self.event_bus,
             extra={
                 GameEvents.PLAYER_DIED: ("Player", "Player died"),
@@ -161,7 +164,7 @@ class Game:
             if self.player.update_death(dt):
                 if self.life_manager.lose_life():
                     self.game_over = True
-                    self.event_bus.emit("game_over")
+                    self.event_bus.emit(GameEvents.GAME_OVER)
                     self.fade_direction = 1
                     self.state.set(GameState.GAME_OVER)
                 else:
@@ -217,8 +220,8 @@ class Game:
         # --- монета ---
         if c.coin_index is not None:
             self.coin_collected[c.coin_index] = True
-            self.score_manager.add_points(1)  # эмитит score_changed
-            self.event_bus.emit("coin_collected", self.score_manager.score)
+            self.score_manager.add_points(1)
+            self.event_bus.emit(GameEvents.COIN_COLLECTED, self.score_manager.score)
             self.sounds.play_coin()
 
         # --- враг ---

@@ -1,13 +1,15 @@
 """Jump & Reach the Flag -- MVC entry point (thin)."""
 import pathlib
 import pygame
+from core.config import settings
+from core.logger import GameLogger
 from core.game import Game
 
 
 def main():
     pygame.init()
-    root_dir = str(pathlib.Path(__file__).resolve().parent)
-    game = Game(root_dir=root_dir)
+    logger = GameLogger(config=settings.logging)
+    game = Game(logger=logger)
     game.run()
     return 0
 

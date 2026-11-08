@@ -1,14 +1,26 @@
-"""GameLogger -- централизованное логирование.
+"""GameLogger -- централизованное логирование с ротацией лог-файлов.
 
 Пишет и в консоль (с цветом по уровню), и в файл.
-Синглтон: реально один экземпляр через __new__.
-Может подписываться на EventBus и логировать игровые события.
+НЕ синглтон (R3): является обычным классом, получающим настройки через DI.
+При старте удаляет лог-файлы, старше max_age_days, и удерживает максимум
+max_files файлов (решение проблемы бесконечного накопления логов).
 """
 import sys
+import time
 import traceback
 from enum import IntEnum
 from datetime import datetime
 from pathlib import Path
+from .config import LogConfig
+
+# Безопасный импорт GameEvents (ПАТЧ 1): logger может грузиться первым
+try:
+    from core.event_bus import GameEvents
+    SCORE_EVENT = GameEvents.SCORE_CHANGED
+    LIVES_EVENT = GameEvents.LIVES_CHANGED
+except ImportError:
+    SCORE_EVENT = "score_changed"
+    LIVES_EVENT = "lives_changed"
 
 
 class LogLevel(IntEnum):
@@ -45,36 +57,51 @@ _LEVEL_COLOR = {
 
 
 class GameLogger:
-    _instance = None
+    # УБРАНО: __new__, _instance, синглтон.
 
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self, level=LogLevel.DEBUG, log_dir=None):
-        # Инициализация выполняется один раз (как у синглтонов)
-        if getattr(self, "_initialized", False):
-            return
-
-        self._initialized = True
+    def __init__(self, level=LogLevel.DEBUG, config: LogConfig | None = None):
         self.level = level
+        # DI: настройки приходят из конфига, а не хардкодятся
+        self.config = config or LogConfig()
 
-        # Каталог для лог-файла (по умолчанию <проект>/logs)
-        if log_dir is None:
-            log_dir = Path(__file__).resolve().parent.parent / "logs"
-        self.log_dir = Path(log_dir)
+        # Каталог логов (из конфигурации)
+        self.log_dir = Path(self.config.log_dir)
+        if not self.log_dir.is_absolute():
+            self.log_dir = Path(__file__).resolve().parent.parent / self.log_dir
         self.log_dir.mkdir(parents=True, exist_ok=True)
+
+        # РОТАЦИЯ: очистка старых файлов ПЕРЕД созданием нового
+        self._rotate_logs()
 
         # Файл логов: logs/game_TIMESTAMP.log
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.log_file = self.log_dir / f"game_{ts}.log"
-
-        # Буфер событий (если понадобится собрать историю)
         self.events = []
 
-        # Кодовая точка создания логгера
-        self._log(LogLevel.INFO, "Logger", f"Logger started -> {self.log_file}")
+    def _rotate_logs(self):
+        """Удаляет файлы game_*.log старше max_age_days и удерживает max_files шт."""
+        if not self.log_dir.is_dir():
+            return
+        files = sorted(self.log_dir.glob("game_*.log"))
+        now = time.time()
+
+        # 1) Удаление по возрасту
+        for path in files:
+            age_days = (now - path.stat().st_mtime) / 86400.0
+            if age_days > self.config.max_age_days:
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+
+        # 2) Предохранитель по количеству (удаляем самые старые)
+        files = sorted(self.log_dir.glob("game_*.log"))
+        while len(files) > self.config.max_files:
+            try:
+                files[0].unlink()
+            except OSError:
+                pass
+            files = sorted(self.log_dir.glob("game_*.log"))
 
     # ------------------------------------------------------------------
     # Основной метод записи
@@ -128,9 +155,10 @@ class GameLogger:
 
         # Базовые события, которые точно есть в игре
         known = {
-            "score_changed": ("Game", "Score -> {0}"),
-            "lives_changed": ("Game", "Lives -> {0}"),
+            SCORE_EVENT: ("Game", "Score -> {0}"),
+            LIVES_EVENT: ("Game", "Lives -> {0}"),
         }
+
         # Дополнительные из внешего кода
         if extra:
             known.update(extra)
@@ -143,19 +171,15 @@ class GameLogger:
             except Exception as e:
                 self.warning("Logger", f"Cannot subscribe to {event_name}: {e}")
 
-    @staticmethod
-    def _make_handler(source, template):
-        """Возвращает функцию-обработчик события, форматирующую шаблон."""
-
+    def _make_handler(self, source, template):
+        """Обработчик пишет в ТОТ же логгер, на котором вызван attach() (DI)."""
         def handler(*args, **kwargs):
-            # Собираем позиционные аргументы в строку
             if args and len(args) == 1:
                 value = args[0]
             else:
                 value = ", ".join(str(a) for a in args)
             msg = template.format(value)
-            logger.info(source, msg)
-
+            self.info(source, msg)     # ← self, не глобальный logger
         return handler
 
     # ------------------------------------------------------------------
@@ -168,9 +192,3 @@ class GameLogger:
         """Логирует произвольное игровое событие."""
         detail_str = ", ".join(f"{k}={v}" for k, v in details.items())
         self.info("Event", f"{event_name} [ {detail_str} ]")
-
-
-# ----------------------------------------------------------------------
-# Модульный «синглтон» — единый объект на всё приложение
-# ----------------------------------------------------------------------
-logger = GameLogger()
