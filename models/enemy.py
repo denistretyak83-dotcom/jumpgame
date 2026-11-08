@@ -4,7 +4,7 @@ from models.model_state import ModelVisualData
 
 
 class Enemy(BaseCharacter):
-    def __init__(self, x, y, left, right, config):
+    def __init__(self, x, y, left, right, config, enemy_data=None):
         super().__init__(x, y, config.enemy.width, config.enemy.height,
                          config=config,
                          death_behavior=None,

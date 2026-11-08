@@ -89,8 +89,10 @@ class WorldFactory:
             y=data["y"],
             left=data["left"],
             right=data["right"],
-            config=self.config
+            config=self.config,
+            enemy_data=data,
         )
+
 
     def create_player(self, x, y, event_bus=None) -> Player:
         """Build Player with spawn coords. event_bus для эмита событий."""
