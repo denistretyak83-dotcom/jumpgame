@@ -5,7 +5,6 @@
 При старте удаляет лог-файлы, старше max_age_days, и удерживает максимум
 max_files файлов (решение проблемы бесконечного накопления логов).
 """
-import sys
 import time
 import traceback
 from enum import IntEnum

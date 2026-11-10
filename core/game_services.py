@@ -1,5 +1,5 @@
 """Выделенные сервисы состояния игры (SRP: каждый отвечает за одно)."""
-from typing import List, Optional
+from typing import Optional
 from core.event_bus import GameEvents
 
 

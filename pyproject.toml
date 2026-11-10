@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jump-and-reach-the-flag"
+version = "1.0.0"
+description = "Retro 2D platformer (Python + Pygame): MVC, EventBus, Data-Driven levels."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Jump & Reach the Flag team" }]
+dependencies = [
+    "pygame>=2.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "coverage>=7.4",
+]
+
+[tool.setuptools]
+# Точка входа — только скрипт запуска (игра — это not на entry-point, но полезно).
+py-modules = ["main"]
+
+# --- Pytest ---
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-config --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+# --- Ruff (линтер + форматтер) ---
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    "tests",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Умеренный набор на старте (не слишком строго): 
+# E/F = pycodestyle+pyflakes, W = warnings, B = bugbear,
+# I = isort (сортировка импортов), UP = pyupgrade (синтакс современного Python),
+# SIM = simplify, ANN = аннотации (только для новых функций; существующий код пока вне поля зрения).
+select = ["E", "F", "W", "B", "I", "UP", "SIM"]
+ignore = [
+    "E501",      # длина строки контролируется formatter (line-length=100), не lint
+    "B008",      # args по умолчанию не разбираем на старте
+    "ANN101",    # не требуем аннотацию self
+    "ANN102",    # не требуем аннотацию cls
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Тесты чуть свободнее: не требуем аннотации, разрешаем простые assert-стили.
+"tests/**" = ["ANN", "SLF001", "F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# --- Coverage ---
+[tool.coverage.run]
+source = ["core", "models", "controllers", "views", "levels", "audio"]
+branch = true
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+precision = 1
+# Исключаем строки, которые по природе не покрываются юнит-тестами.
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "except Exception:",
+    "except ImportError:",
+    "if __name__ == .__main__.:",
+]

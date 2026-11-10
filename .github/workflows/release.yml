@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # для создания GitHub Release через softprops/action-gh-release
+
+jobs:
+  build:
+    name: Build binary
+    runs-on: ubuntu-latest
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Build one-file executable (PyInstaller)
+        run: |
+          pyinstaller --onefile --noconfirm --name JumpAndReachTheFlag main.py
+
+      - name: Verify artifact
+        run: |
+          ls -la dist/
+          test -f dist/JumpAndReachTheFlag && echo "Build OK" || echo "ARTIFACT MISSING"
+
+      - name: Upload build artifact (для передачи между jobs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: JumpAndReachTheFlag-${{ github.ref_name }}
+          path: dist/JumpAndReachTheFlag
+          retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: JumpAndReachTheFlag-${{ github.ref_name }}
+          path: dist/
+
+      - name: Create GitHub Release and attach binary
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/JumpAndReachTheFlag
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

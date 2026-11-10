@@ -4,26 +4,12 @@
 - Протоколы (DIP) — модель и View зависят от абстракций.
 - DeathBehavior — ОПЦИОНАЛЬНЫЙ компонент смерти. Не задан => персонаж просто is_dead.
 - RespawnBehavior — компонент возврата копии персонажа.
-- Animatable — протокол View-слоя: модель НЕ тикает анимации (это делает
-  SpriteCache.update(dt) в Game._update), а лишь отдаёт CharacterVisualState.
 """
 from abc import ABC, abstractmethod
-from models.model_state import ModelVisualData
-
+from typing import Any, Callable, Optional
 # ---------------------------------------------------------------------------
-# ПРОТОКОЛ АНИМАЦИЙ (View-слой)
+# ПРОТОКОЛ СМЕРТИ (опциональный компонент)
 # ---------------------------------------------------------------------------
-from typing import Any, Callable, Optional, Protocol, runtime_checkable
-
-
-
-@runtime_checkable
-class Animatable(Protocol):
-    @property
-    def facing_left(self) -> bool: ...
-    @property
-    def is_dead(self) -> bool: ...
-    def get_visual_data(self) -> ModelVisualData: ...
 # ---------------------------------------------------------------------------
 # ПРОТОКОЛ СМЕРТИ (опциональный компонент)
 # ---------------------------------------------------------------------------

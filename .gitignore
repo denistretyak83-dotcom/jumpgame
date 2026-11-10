@@ -1,3 +1,26 @@
-**/__pycache__/
-.idea/
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*~ .egg-info/
+*.egg
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.coverage.*
+coverage.xml
+# ---- VEnv / venv ----
+.venv/
+venv/
+# ---- Build / release ----
+build/
+dist/
+*.spec
+*.exe
+# ---- OS / editors ----
 logs/
+.DS_Store
+*.log
+.idea/
+.vscode/

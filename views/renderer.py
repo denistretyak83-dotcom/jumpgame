@@ -4,7 +4,6 @@ import pygame
 from views.background import RetroBackground
 from views.tiles import RetroTiles
 from views.hud import draw_retro_hud, draw_pixelated_fade
-from views.sprite_cache import SpriteCache
 
 
 class Renderer:
