@@ -8,11 +8,17 @@ from models.physics import PhysicsComponent
 
 
 class BaseCharacter(Entity, ABC):
-
-    def __init__(self, x: int, y: int, width: int, height: int,
-                 config=None, event_bus=None,
-                 death_behavior: DeathBehavior | None = None,
-                 respawn_behavior: RespawnBehavior | None = None):
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        config=None,
+        event_bus=None,
+        death_behavior: DeathBehavior | None = None,
+        respawn_behavior: RespawnBehavior | None = None,
+    ):
         super().__init__(x, y, width, height)
         self.event_bus = event_bus
         self._cfg = config
@@ -35,8 +41,7 @@ class BaseCharacter(Entity, ABC):
 
     # ------------------------- абстракции -------------------------
     @abstractmethod
-    def update(self, dt, ctx=None, intent=None) -> None:
-        ...
+    def update(self, dt, ctx=None, intent=None) -> None: ...
 
     @abstractmethod
     def get_visual_data(self) -> ModelVisualData:

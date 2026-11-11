@@ -1,4 +1,5 @@
 """config.py -- Load and parse settings from JSON."""
+
 import json
 import pathlib
 from dataclasses import dataclass, field
@@ -24,6 +25,7 @@ class PhysicsConfig:
 @dataclass
 class DeathConfig:
     """Параметры кинематографичной смерти-падения игрока (R5)."""
+
     gravity: float = 1200.0
     launch_vy: float = -400.0
     fall_vy: float = -100.0
@@ -67,23 +69,28 @@ class AssetsConfig:
 @dataclass
 class AnimationConfig:
     """Тайминги анимаций в СЕКУНДАХ (задержка между кадрами)."""
-    idle_delay: float = 0.167      # ~10 кадров/с (было 10 тиков)
-    run_delay: float = 0.10        # ~10 кадров/с (было 6 тиков)
-    jump_delay: float = 0.13       # ~8 кадров/с  (было 8 тиков)
-    walk_delay: float = 0.13       # ~8 кадров/с  (было 8 тиков)
+
+    idle_delay: float = 0.167  # ~10 кадров/с (было 10 тиков)
+    run_delay: float = 0.10  # ~10 кадров/с (было 6 тиков)
+    jump_delay: float = 0.13  # ~8 кадров/с  (было 8 тиков)
+    walk_delay: float = 0.13  # ~8 кадров/с  (было 8 тиков)
 
 
 @dataclass
 class CollisionConfig:
     """Параметры системы коллизий."""
+
     fall_buffer: int = 30
+
 
 @dataclass
 class LogConfig:
     """Настройки логирования и ротации лог-файлов (R-лог)."""
+
     log_dir: str = "logs"
-    max_age_days: int = 7      # хранить только за последние N дней
-    max_files: int = 10        # предохранитель: максимум файлов
+    max_age_days: int = 7  # хранить только за последние N дней
+    max_files: int = 10  # предохранитель: максимум файлов
+
 
 class Settings:
     def __init__(self, path="config/settings.json"):

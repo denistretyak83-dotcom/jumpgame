@@ -2,6 +2,7 @@
 (from retro_tiles.py). Both generators are preserved verbatim so no visual
 variation is lost.
 """
+
 import random
 
 import pygame

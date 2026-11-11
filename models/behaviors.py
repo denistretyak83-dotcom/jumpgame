@@ -5,6 +5,7 @@
 - DeathBehavior — ОПЦИОНАЛЬНЫЙ компонент смерти. Не задан => персонаж просто is_dead.
 - RespawnBehavior — компонент возврата копии персонажа.
 """
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
@@ -63,20 +64,22 @@ class FallDeathBehavior(DeathBehavior):
     персонажа уходит ниже screen_height + margin.
     """
 
-    def __init__(self,
-                 owner: Any | None = None,
-                 death_cfg=None,
-                 death_gravity: float | None = None,
-                 screen_height: int = 720,
-                 margin: int | None = None,
-                 launch_vy: float | None = None,
-                 fall_vy: float | None = None):
+    def __init__(
+        self,
+        owner: Any | None = None,
+        death_cfg=None,
+        death_gravity: float | None = None,
+        screen_height: int = 720,
+        margin: int | None = None,
+        launch_vy: float | None = None,
+        fall_vy: float | None = None,
+    ):
         # 1) Базовые значения берём из конфига (R5)
         if death_cfg is not None:
-            base_gravity = getattr(death_cfg, 'gravity', 1200)
-            base_margin = getattr(death_cfg, 'margin', 60)
-            base_launch = getattr(death_cfg, 'launch_vy', -400)
-            base_fall = getattr(death_cfg, 'fall_vy', -100)
+            base_gravity = getattr(death_cfg, "gravity", 1200)
+            base_margin = getattr(death_cfg, "margin", 60)
+            base_launch = getattr(death_cfg, "launch_vy", -400)
+            base_fall = getattr(death_cfg, "fall_vy", -100)
         else:
             base_gravity, base_margin = 1200, 60
             base_launch, base_fall = -400, -100
@@ -112,6 +115,7 @@ class FallDeathBehavior(DeathBehavior):
     @property
     def is_active(self) -> bool:
         return self.active
+
 
 # ---------------------------------------------------------------------------
 # КОНКРЕТНЫЙ КОМПОНЕНТ: "вернуть копию через фабрику"

@@ -1,4 +1,5 @@
 """LevelManager -- loads / builds / caches levels from JSON."""
+
 import json
 import logging
 import pathlib
@@ -10,9 +11,11 @@ import pygame
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class LevelData:
     """Структурированный результат загрузки уровня."""
+
     name: str
     next_level: str | None
     player_spawn: tuple[float, float]

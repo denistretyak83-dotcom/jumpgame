@@ -3,6 +3,7 @@
 DI (R3): конфиг инжектируется через конструктор; если не передан,
 создаётся собственный Settings() (но не читается глобальный).
 """
+
 import os
 
 import pygame
@@ -21,12 +22,9 @@ class AssetLoader:
         self._setup_roots()
 
     def _setup_roots(self):
-        self.fonts_abs = os.path.join(self.base_dir,
-                                      self.config.assets.fonts_dir)
-        self.sprites_abs = os.path.join(self.base_dir,
-                                        self.config.assets.sprites_dir)
-        self.sounds_abs = os.path.join(self.base_dir,
-                                       self.config.assets.sounds_dir)
+        self.fonts_abs = os.path.join(self.base_dir, self.config.assets.fonts_dir)
+        self.sprites_abs = os.path.join(self.base_dir, self.config.assets.sprites_dir)
+        self.sounds_abs = os.path.join(self.base_dir, self.config.assets.sounds_dir)
 
     def get_font(self, size, name=None):
         name = name or self.config.assets.font_name

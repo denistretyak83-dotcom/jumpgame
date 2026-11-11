@@ -11,6 +11,7 @@ Usage:
     bus.unsubscribe(token)         # при уничтожении подписчика
     bus.emit(GameEvents.COIN_COLLECTED, score)
 """
+
 import itertools
 import logging
 from collections.abc import Callable
@@ -37,7 +38,7 @@ class EventBus:
     def subscribe(self, event: str, callback: Callable) -> int:
         """Подписывает обработчик на событие. Возвращает token для unsubscribe."""
         self._handlers.setdefault(event, []).append(callback)
-        token = next(_token_counter)          # гарантированно уникальный
+        token = next(_token_counter)  # гарантированно уникальный
         self._tokens[token] = (event, callback)
         return token
 

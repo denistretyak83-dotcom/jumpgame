@@ -9,6 +9,7 @@
 - FlyerBehavior   — лётун/hover: X-патруль + вертикальная синусоида вокруг
                     базовой Y. Платформы и гравитацию ИГНОРИРУЕТ (в4 1а/2б).
 """
+
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -145,13 +146,11 @@ class EnemyBehaviorRegistry:
         self._factories: dict[str, Callable[[], EnemyBehavior]] = {}
         self._fallback_type = "walker"
 
-    def register(self, behavior_type: str,
-                 behavior_factory: Callable[[], EnemyBehavior]) -> None:
+    def register(self, behavior_type: str, behavior_factory: Callable[[], EnemyBehavior]) -> None:
         self._factories[behavior_type] = behavior_factory
 
     def create(self, behavior_type: str | None = None) -> EnemyBehavior:
-        return self._factories.get(behavior_type or "",
-                                   self._factories[self._fallback_type])()
+        return self._factories.get(behavior_type or "", self._factories[self._fallback_type])()
 
 
 # Локальный реестр по умолчанию (fallback при отсутствии DI-реестра).

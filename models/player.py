@@ -14,10 +14,16 @@ class Player(BaseCharacter):
                 death_cfg=cfg.death,
                 screen_height=cfg.screen.height,
             )
-        super().__init__(x, y, cfg.player.width, cfg.player.height,
-                         config=cfg, event_bus=event_bus,
-                         death_behavior=death_behavior,
-                         respawn_behavior=None)
+        super().__init__(
+            x,
+            y,
+            cfg.player.width,
+            cfg.player.height,
+            config=cfg,
+            event_bus=event_bus,
+            death_behavior=death_behavior,
+            respawn_behavior=None,
+        )
 
         # ВАЖНО: создаётся ПОСЛЕ super().__init__ (нужны vel_x/on_ground)
         self.state_machine = PlayerStateMachine(IdleState())
@@ -48,7 +54,7 @@ class Player(BaseCharacter):
 
         if self.rect.left < 0:
             self.rect.left = 0
-        if hasattr(ctx, 'screen_width') and self.rect.right > ctx.screen_width:
+        if hasattr(ctx, "screen_width") and self.rect.right > ctx.screen_width:
             self.rect.right = ctx.screen_width
 
         # --- ОБНОВЛЕНИЕ СОСТОЯНИЯ (после физики, чтобы vel_y/on_ground актуальны) ---
@@ -62,9 +68,14 @@ class Player(BaseCharacter):
             facing = False
 
         return ModelVisualData(
-            x=self.rect.x, y=self.rect.y,
-            width=self.rect.width, height=self.rect.height,
-            vel_x=self.vel_x, vel_y=self.vel_y,
-            on_ground=self.on_ground, facing_left=facing, is_dead=self.is_dead,
-            anim_hint=self.state_machine.get_anim_key(self),   # ← ключ из состояния
+            x=self.rect.x,
+            y=self.rect.y,
+            width=self.rect.width,
+            height=self.rect.height,
+            vel_x=self.vel_x,
+            vel_y=self.vel_y,
+            on_ground=self.on_ground,
+            facing_left=facing,
+            is_dead=self.is_dead,
+            anim_hint=self.state_machine.get_anim_key(self),  # ← ключ из состояния
         )

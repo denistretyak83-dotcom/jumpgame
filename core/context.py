@@ -14,5 +14,6 @@ class GameContext:
         self.platforms = platforms
         self.screen_width = screen_width
         self.player_x = float(player_x)  # позиция игрока (для поведения chaser)
+
     # Контекст легко расширить новыми полями
     # (например: self.time_scale, self.animations, self.scene...).

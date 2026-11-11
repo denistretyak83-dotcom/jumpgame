@@ -1,4 +1,5 @@
 """Game -- Orchestrator: main loop, state, and MVC wiring."""
+
 import pathlib
 
 import pygame
@@ -77,8 +78,12 @@ class Game:
         self.sprite_cache = SpriteCache(self.assets, self.config)
 
         self.renderer = Renderer(
-            self.screen, self.sprite_cache, self.coin_icon,
-            self.font, self.small_font, self.config,
+            self.screen,
+            self.sprite_cache,
+            self.coin_icon,
+            self.font,
+            self.small_font,
+            self.config,
             view_registry={
                 Player: lambda: self.sprite_cache.player_view(),
                 Enemy: lambda: self.sprite_cache.enemy_view(),
@@ -199,7 +204,8 @@ class Game:
         # Сущности (player + враги) рисует Renderer через get_render_info()
         self.renderer.draw(
             self.entities,  # <-- единый список вместо player/enemies
-            self.coins, self.coin_collected,
+            self.coins,
+            self.coin_collected,
             self.level.flag_rect,
             self.score_manager.score,
             self.life_manager.lives,
@@ -208,7 +214,7 @@ class Game:
             self.won,
             self.game_over,
             self.fade_level,
-            self.camera
+            self.camera,
         )
         # player_view рендер УДАЛЁН — отрисовка игрока внутри Renderer.draw_entities
 
@@ -216,7 +222,8 @@ class Game:
         """Централизованная обработка всех коллизий за один проход (R6)."""
         c = self.collision_system.check(
             self.player.rect,
-            self.coins, self.coin_collected,
+            self.coins,
+            self.coin_collected,
             [e for e in self.entities if e is not self.player],
             self.level.flag_rect,
         )

@@ -8,12 +8,14 @@
 PhysicsParams, чтобы устранить дубль имени с официальным
 core.config.PhysicsConfig (публичный конфиг из settings.json).
 """
+
 from dataclasses import dataclass
 
 
 @dataclass
 class PhysicsParams:
     """Внутренние параметры физики (fallback-значения компонента)."""
+
     gravity: float = 1500
     max_fall: float = 1400
     ground_tolerance: float = 8.0
@@ -56,7 +58,7 @@ class PhysicsComponent:
         head_bumped = False
         if entity.is_dead:
             return head_bumped
-        if not hasattr(entity, 'rect'):
+        if not hasattr(entity, "rect"):
             return head_bumped
 
         if not entity.on_ground:
@@ -92,12 +94,14 @@ class PhysicsComponent:
         tolerance = self._ground_tolerance
         grounded = False
         for p in platforms:
-            if (entity.rect.bottom >= p.top - 1
-                    and entity.rect.bottom <= p.top + tolerance
-                    and entity.rect.bottom > p.top - 2
-                    and entity.vel_y >= -0.5
-                    and entity.rect.right > p.left
-                    and entity.rect.left < p.right):
+            if (
+                entity.rect.bottom >= p.top - 1
+                and entity.rect.bottom <= p.top + tolerance
+                and entity.rect.bottom > p.top - 2
+                and entity.vel_y >= -0.5
+                and entity.rect.right > p.left
+                and entity.rect.left < p.right
+            ):
                 grounded = True
                 break
         entity.on_ground = grounded

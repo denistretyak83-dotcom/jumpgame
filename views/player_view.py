@@ -1,4 +1,5 @@
 """PlayerView -- responsible for rendering the player model."""
+
 import pygame
 
 
@@ -18,7 +19,7 @@ class PlayerView:
 
         # 1. Обработка состояния смерти (переворот)
         if player.is_dead:
-            frame = player.animations['idle'].current()
+            frame = player.animations["idle"].current()
             if frame is not None:
                 # Переворачиваем спрайт
                 flipped_frame = pygame.transform.flip(frame, False, True)
@@ -32,8 +33,9 @@ class PlayerView:
 
         # 3. Отрисовка с учетом направления (влево/вправо)
         if player.facing_left and (
-                player.current_anim is player.animations['idle'] or
-                player.current_anim is player.animations['jump']):
+            player.current_anim is player.animations["idle"]
+            or player.current_anim is player.animations["jump"]
+        ):
             frame = pygame.transform.flip(frame, True, False)
 
         # 4. Блик (blit)

@@ -8,6 +8,7 @@
 Также владеет EnemyBehaviorRegistry (DI) и передаёт его созданным врагам,
 чтобы типы поведения (walker/chaser/...) были известны всем экземплярам Enemy.
 """
+
 from collections.abc import Callable
 from typing import Any
 
@@ -72,8 +73,7 @@ class WorldFactory:
     def entity_factories(self) -> dict[str, ObjectFactory]:
         """Вернуть dict фабрик для LevelManager (единообразные обёртки)."""
         return {
-            obj_type: (lambda d, t=obj_type: self.create(t, d))
-            for obj_type in list(self._registry)
+            obj_type: (lambda d, t=obj_type: self.create(t, d)) for obj_type in list(self._registry)
         }
 
     # ------------------------------------------------------------------

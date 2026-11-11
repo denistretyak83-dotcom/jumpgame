@@ -5,6 +5,7 @@
 При старте удаляет лог-файлы, старше max_age_days, и удерживает максимум
 max_files файлов (решение проблемы бесконечного накопления логов).
 """
+
 import time
 import traceback
 from contextlib import suppress
@@ -17,6 +18,7 @@ from .config import LogConfig
 # Безопасный импорт GameEvents (ПАТЧ 1): logger может грузиться первым
 try:
     from core.event_bus import GameEvents
+
     SCORE_EVENT = GameEvents.SCORE_CHANGED
     LIVES_EVENT = GameEvents.LIVES_CHANGED
 except ImportError:
@@ -32,7 +34,7 @@ class LogLevel(IntEnum):
 
     @property
     def label(self):
-        return self.name   # "DEBUG", "INFO", ...
+        return self.name  # "DEBUG", "INFO", ...
 
 
 # ANSI-цвета для консоли
@@ -170,10 +172,12 @@ class GameLogger:
 
     def _make_handler(self, source, template):
         """Обработчик пишет в ТОТ же логгер, на котором вызван attach() (DI)."""
+
         def handler(*args, **kwargs):
             value = args[0] if args and len(args) == 1 else ", ".join(str(a) for a in args)
             msg = template.format(value)
-            self.info(source, msg)     # ← self, не глобальный logger
+            self.info(source, msg)  # ← self, не глобальный logger
+
         return handler
 
     # ------------------------------------------------------------------

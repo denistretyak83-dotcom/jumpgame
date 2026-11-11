@@ -7,6 +7,7 @@
 Добавление новых возможностей (удар, ползанье, двойной прыжок) =
 новый класс-состояние + регистрация переходов. Существующие НЕ меняются (OCP).
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -28,11 +29,11 @@ class PlayerState(ABC):
     # ------------- хуки жизни состояния -------------
     def enter(self, player) -> None:
         """Вызывается при входе (например, задать vel_y при прыжке)."""
-        return None   # hook по умолчанию — ничего не делает
+        return None  # hook по умолчанию — ничего не делает
 
     def exit(self, player) -> None:
         """Вызывается при выходе из состояния."""
-        return None   # hook по умолчанию
+        return None  # hook по умолчанию
 
     # ------------- переходы -------------
     @abstractmethod
@@ -44,8 +45,9 @@ class PlayerState(ABC):
 # Состояния покоя / движения
 # ---------------------------------------------------------------------------
 
+
 class IdleState(PlayerState):
-    anim_key = 'idle'
+    anim_key = "idle"
 
     def handle(self, player, intent, dt):
         if not player.on_ground:
@@ -58,7 +60,7 @@ class IdleState(PlayerState):
 
 
 class RunState(PlayerState):
-    anim_key = 'run'
+    anim_key = "run"
 
     def handle(self, player, intent, dt):
         if not player.on_ground:
@@ -74,17 +76,18 @@ class RunState(PlayerState):
 # Состояния полёта (прыжок вверх / падение вниз)
 # ---------------------------------------------------------------------------
 
+
 class JumpState(PlayerState):
     """Летим ВВЕРХ (vel_y < 0). Это настоящий прыжок."""
 
-    anim_key = 'jump'     # ← реализует абстрактное свойство (не абстрактно больше)
+    anim_key = "jump"  # ← реализует абстрактное свойство (не абстрактно больше)
 
     def enter(self, player):
         self._moving = player.vel_x != 0
 
     def get_anim_key(self, player) -> str:
         # реальный выбор: направленный или нейтральный
-        return 'jump' if player.vel_x != 0 else 'jump_neutral'
+        return "jump" if player.vel_x != 0 else "jump_neutral"
 
     def handle(self, player, intent, dt):
         self._moving = player.vel_x != 0
@@ -96,13 +99,13 @@ class JumpState(PlayerState):
 class FallState(PlayerState):
     """Падаем ВНИЗ (vel_y >= 0) — сход с платформы, не прыжок."""
 
-    anim_key = 'idle'     # значение по умолчанию (удовлетворяет ABC)
+    anim_key = "idle"  # значение по умолчанию (удовлетворяет ABC)
 
     def enter(self, player):
         self._moving = player.vel_x != 0
 
     def get_anim_key(self, player) -> str:
-        return 'run' if player.vel_x != 0 else 'idle'
+        return "run" if player.vel_x != 0 else "idle"
 
     def handle(self, player, intent, dt):
         if player.on_ground:
@@ -115,6 +118,7 @@ class FallState(PlayerState):
 # ---------------------------------------------------------------------------
 # Машина состояний
 # ---------------------------------------------------------------------------
+
 
 class PlayerStateMachine:
     """Владелец текущего состояния игрока."""

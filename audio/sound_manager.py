@@ -3,6 +3,7 @@
 Ported from the original sounds.py. Synthesis math is preserved exactly.
 Uses pathlib for the music path (in place of the equivalent string join).
 """
+
 import array
 import math
 import pathlib
@@ -28,7 +29,7 @@ class SoundManager:
 
     # ---------------- internal synthesis helpers ----------------
     def _make_sound(self, samples):
-        data = array.array('h')
+        data = array.array("h")
         for s in samples:
             val = int(max(-1.0, min(1.0, s)) * 32767)
             data.append(val)
@@ -41,7 +42,7 @@ class SoundManager:
         for i in range(n):
             t = i / SR
             freq = 200 + (400 * i / n)
-            amp = (1 - i / n)
+            amp = 1 - i / n
             samples.append(amp * math.sin(2 * math.pi * freq * t))
         return self._make_sound(samples)
 

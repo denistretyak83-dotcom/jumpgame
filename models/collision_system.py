@@ -7,6 +7,7 @@ CollisionResult БЕЗ мутаций игры. Игровые правила о
 - Интерфейс Collidable (Protocol) вместо сырого duck-typing (ISP/DIP).
 - fall_buffer берётся из settings.json, а не захардкожен.
 """
+
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
@@ -16,16 +17,18 @@ import pygame
 @runtime_checkable
 class Collidable(Protocol):
     """Что нужно сущности, чтобы участвовать в коллизиях."""
+
     rect: pygame.Rect
 
 
 @dataclass
 class CollisionResult:
     """Результат одного прохода коллизий за кадр (data-driven, без мутаций)."""
-    coin_index: int | None = None     # индекс подобранной монеты (или None)
-    hit_enemy: Any | None = None      # враг, с которым столкнулись (или None)
-    hit_flag: bool = False               # коснулись флага
-    fell_out: bool = False               # упали ниже экрана
+
+    coin_index: int | None = None  # индекс подобранной монеты (или None)
+    hit_enemy: Any | None = None  # враг, с которым столкнулись (или None)
+    hit_flag: bool = False  # коснулись флага
+    fell_out: bool = False  # упали ниже экрана
 
 
 class CollisionSystem:
@@ -37,11 +40,16 @@ class CollisionSystem:
 
     def __init__(self, screen_height: int, fall_buffer: int):
         self.screen_height = screen_height
-        self.fall_buffer = fall_buffer   # теперь из settings, не магия
+        self.fall_buffer = fall_buffer  # теперь из settings, не магия
 
-    def check(self, player_rect: pygame.Rect, coins: list[pygame.Rect],
-              coin_collected: list[bool], enemies: list[Collidable],
-              flag_rect: pygame.Rect | None) -> CollisionResult:
+    def check(
+        self,
+        player_rect: pygame.Rect,
+        coins: list[pygame.Rect],
+        coin_collected: list[bool],
+        enemies: list[Collidable],
+        flag_rect: pygame.Rect | None,
+    ) -> CollisionResult:
         """Один проход: монеты -> враг -> флаг -> падение."""
         result = CollisionResult()
 

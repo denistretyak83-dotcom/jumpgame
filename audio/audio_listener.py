@@ -5,6 +5,7 @@
 
 Вызывается из Game.__init__ через attach_audio_listener(event_bus, sounds).
 """
+
 from core.event_bus import GameEvents
 
 

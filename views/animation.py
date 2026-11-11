@@ -4,7 +4,7 @@
 class Animation:
     def __init__(self, frames, frame_delay_s: float, loop=True):
         self.frames = frames
-        self.frame_delay_s = frame_delay_s   # секунды
+        self.frame_delay_s = frame_delay_s  # секунды
         self.loop = loop
         self.index = 0
         self.timer = 0.0

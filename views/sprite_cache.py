@@ -8,6 +8,7 @@
   player: idle, run_left, run_right, jump
   enemy:  walk
 """
+
 from views.animation import Animation
 from views.character_view import CharacterView
 
@@ -24,7 +25,7 @@ class SpriteCache:
         self._assets = asset_loader
         self._cfg = config
         self._player_view = None
-        self._enemy_views = {}   # кэш вью врагов по sprite_key
+        self._enemy_views = {}  # кэш вью врагов по sprite_key
 
     # ------------------------------------------------------------------
     # Публичный доступ к View для сущностей
@@ -36,7 +37,7 @@ class SpriteCache:
             self._player_view = CharacterView(self._build_player_animations())
         return self._player_view
 
-    def enemy_view(self, sprite_key='walker'):
+    def enemy_view(self, sprite_key="walker"):
         if sprite_key not in self._enemy_views:
             self._enemy_views[sprite_key] = CharacterView(self._build_enemy_animations())
         return self._enemy_views[sprite_key]
@@ -54,17 +55,17 @@ class SpriteCache:
         jump_directed = jump_all[1:2] if jump_all else []
 
         return {
-            'idle': Animation(
-                self._assets.load_animation_frames("player_idle", 3, psize),
-                anim.idle_delay),
-            'run_left': Animation(
-                self._assets.load_animation_frames("player_run/left", 4, psize),
-                anim.run_delay),
-            'run_right': Animation(
-                self._assets.load_animation_frames("player_run/right", 4, psize),
-                anim.run_delay),
-            'jump_neutral': Animation(jump_neutral, anim.jump_delay, loop=False),
-            'jump': Animation(jump_directed, anim.jump_delay, loop=False),
+            "idle": Animation(
+                self._assets.load_animation_frames("player_idle", 3, psize), anim.idle_delay
+            ),
+            "run_left": Animation(
+                self._assets.load_animation_frames("player_run/left", 4, psize), anim.run_delay
+            ),
+            "run_right": Animation(
+                self._assets.load_animation_frames("player_run/right", 4, psize), anim.run_delay
+            ),
+            "jump_neutral": Animation(jump_neutral, anim.jump_delay, loop=False),
+            "jump": Animation(jump_directed, anim.jump_delay, loop=False),
         }
 
     def _build_enemy_animations(self) -> dict:
@@ -73,8 +74,9 @@ class SpriteCache:
         walk_frames = self._assets.load_animation_frames("enemy_walk", 4, esize)
 
         from views.animation import Animation
+
         return {
-            'walk': Animation(walk_frames, anim.walk_delay),
+            "walk": Animation(walk_frames, anim.walk_delay),
         }
 
     def update(self, dt: float):

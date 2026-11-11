@@ -1,11 +1,12 @@
 """StateManager -- central game state (playing / won / game over)."""
+
 from enum import Enum, auto
 
 
 class GameState(Enum):
-    PLAYING = auto()     # normal gameplay
-    WON = auto()         # flag reached -> show victory + allow restart
-    GAME_OVER = auto()   # lives exhausted -> pixelated fade
+    PLAYING = auto()  # normal gameplay
+    WON = auto()  # flag reached -> show victory + allow restart
+    GAME_OVER = auto()  # lives exhausted -> pixelated fade
 
 
 class StateManager:
