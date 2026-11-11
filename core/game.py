@@ -16,6 +16,7 @@ from core.game_services import LifeManager, RespawnService, ScoreManager
 from core.gameplay import CollisionDirector
 from core.level_flow import LevelFlow
 from core.logger import GameLogger
+from core.player_flow import PlayerFlow
 from core.state_manager import GameState, StateManager
 from levels.level_manager import LevelManager
 from models.collision_system import CollisionSystem
@@ -111,6 +112,8 @@ class Game:
             camera=self.camera,
             sounds=self.sounds,
         )
+        self.life_manager = LifeManager(self.config.game.lives, self.event_bus)
+        self.score_manager = ScoreManager(self.event_bus)
 
         # --- Game State Vars ---
 
@@ -129,6 +132,12 @@ class Game:
         self.entities = []  # все движущиеся сущности (player + enemies)
         self.player = None  # быстрая ссылка на игрока
         self.player_view = None
+        # НОВОЕ: PlayerFlow (SRP) — смерть/респавн/жизни вынесены из Game.
+        self.player_flow = PlayerFlow(
+            world_factory=self.world_factory,
+            life_manager=self.life_manager,
+            event_bus=self.event_bus,
+        )
 
         # Event Listeners
         self.life_manager = LifeManager(self.config.game.lives, self.event_bus)
@@ -203,14 +212,21 @@ class Game:
 
         # 2. Смерть игрока
         if self.player.is_dead:
-            if self.player.update_death(dt):
-                if self.life_manager.lose_life():
-                    self.game_over = True
-                    self.event_bus.emit(GameEvents.GAME_OVER)
-                    self.fade_direction = 1
-                    self.state.set(GameState.GAME_OVER)
-                else:
-                    self._respawn_player()
+            # True -> жизни закончились -> game over; False -> респавн; None -> смерть длится
+            death_result = self.player_flow.update_death(dt)
+            if death_result is True:
+                self.game_over = True
+                self.event_bus.emit(GameEvents.GAME_OVER)
+                self.fade_direction = 1
+                self.state.set(GameState.GAME_OVER)
+            elif death_result is False:
+                # PlayerFlow уже создал нового игрока; подменяем ссылку в entities и камеру
+                for i, e in enumerate(self.entities):
+                    if e is self.player:
+                        self.entities[i] = self.player_flow.player
+                        break
+                self.player = self.player_flow.player
+                self.camera.update(self.player.rect.x)
             return
 
         # 3. Ввод через контроллер
@@ -278,6 +294,10 @@ class Game:
         self.entities = self.level_flow.entities
         self.coins = self.level_flow.coins
         self.coin_collected = self.level_flow.coin_collected
+
+        # Привязка к PlayerFlow (новый уровень -> новый спавн, новый игрок)
+        self.player_flow.bind_level(self.level)
+        self.player_flow.bind_player(self.player)
 
         # Сброс "победных" флагов и игрового состояния на новый уровень.
         self.won = False

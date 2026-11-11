@@ -331,6 +331,13 @@ def test_load_level_resets_won_flags_and_coins():
     g.game_over = True
     g.collision_director = type("CD", (), {"won": True})()
 
+    # НОВОЕ: заглушка PlayerFlow — _load_level теперь вызывает
+    # self.player_flow.bind_level/bind_player при загрузке уровня.
+    g.player_flow = type("PlayerFlowStub", (), {
+        "bind_level": lambda self, level: None,
+        "bind_player": lambda self, p: None,
+    })()
+
     class FakeLevelFlow:
         def load_and_setup(self, name):
             self.level = object()

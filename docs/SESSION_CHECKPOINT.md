@@ -134,3 +134,43 @@ docs/ARCHITECTURE_PLAN.md, docs/AUDIT_REPORT.md, docs/ACTION_PLAN.md, docs/SANIT
 4. Продолжить Фазу 5 (Data-Driven расширение) по разделу 7.
 5. Позже — вернуть views/audio к покрытию и Фаза 6.
 6. Обновлять этот файл по мере выполнения.
+
+## Фаза 7 / Рефакторинг: декомпозиция Game (SRP)
+
+### Проблема
+`core/game.py` (класс Game) — God Object: совмещает цикл, состояние,
+респавн, переходы уровней, фейд game-over, рендер, камеру.
+
+### Целевая структура
+core/
+├── game.py              # тонкий оркестратор (цикл + композиция)
+├── player_flow.py       # (новый) PlayerFlow: смерть/респавн/жизни
+├── level_transition.py  # (новый) LevelTransition: next_level/restart/последний
+├── game_over_handler.py # (новый) GameOverHandler: фейд + рестарт GAME_OVER
+└── (остальные core-модули без изменений: gameplay, game_services,
+    level_flow, state_manager, event_bus, camera, config, context, ...)
+
+### Ответственности после декомпозиции
+
+| Класс | Ответственность | Выносимая логика из Game |
+|-------|-----------------|---------------------------|
+| Game | цикл, диспетчер по состояниям, композиция сервисов | _update как чистый диспетчер |
+| PlayerFlow | смерть игрока, респавн, жизни | _respawn_player, блок смерти в _update |
+| LevelTransition | next_level, рестарт, «последний уровень» | _load_level, _advance_to_next_level, reset_run_state (частично), current_level_name |
+| GameOverHandler | фейд game-over, рестарт по R | _update_game_over_fade, ветка GAME_OVER |
+
+### Принципы, которые закрывает
+- SRP: Game перестаёт быть God Object.
+- DIP: сервисы внедряются в Game через конструктор (убираем фабрику внутри).
+- OCP: новые под-сцены добавляются как обработчики состояний без правки Game.
+
+### Порядок внедрения (безопасный, пошаговый)
+1. Создать PlayerFlow — вынести _respawn_player + логику смерти/жизней.
+2. Создать LevelTransition — вынести переходы и рестарт.
+3. Создать GameOverHandler — вынести фейд и рестарт GAME_OVER.
+4. Перевести Game на делегирование новым сервисам, сохранив публичное API
+   (_update, reset_run_state) для совместимости с тестами.
+5. Обновить/дополнить тесты; pytest tests/ -q — зелёные.
+
+### Статус
+ПЛАН (согласуется с пользователем перед реализацией)
