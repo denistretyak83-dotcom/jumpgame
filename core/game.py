@@ -114,6 +114,10 @@ class Game:
 
         # --- Game State Vars ---
 
+        # Текущий загруженный уровень (как ключ каталога, напр. "level_1").
+        # Отсюда берём next_level для перехода на следующий уровень.
+        self.current_level_name = "level_1"
+
         self.frame_count = 0
         self.fade_level = 0
         self.fade_direction = 0
@@ -124,7 +128,7 @@ class Game:
         # --- Полиморфизм: единый список сущностей ---
         self.entities = []  # все движущиеся сущности (player + enemies)
         self.player = None  # быстрая ссылка на игрока
-        self.player_view = None  # (удалено — сущности рисует Renderer через get_render_info)
+        self.player_view = None
 
         # Event Listeners
         self.life_manager = LifeManager(self.config.game.lives, self.event_bus)
@@ -172,6 +176,18 @@ class Game:
 
         # 1. Состояния конца игры + рестарт
         if self.state.has_ended():
+            if self.state.current is GameState.WON:
+                # Победа (флаг достигнут): сначала пробуем перейти на следующий
+                # уровень через next_level (J2). Если переход выполнен — играем дальше.
+                if self._advance_to_next_level():
+                    return
+                # Следующего уровня нет (это последний уровень каталога):
+                # здесь обрабатываем рестарт по R; иначе остаёмся на экране победы.
+                if keys[pygame.K_r]:
+                    self.reset_run_state()
+                    return
+                return
+            # GAME_OVER: рестарт или фейд
             if keys[pygame.K_r]:
                 self.reset_run_state()
                 return
@@ -197,21 +213,19 @@ class Game:
                     self._respawn_player()
             return
 
-        # 3. Ввод через контроллер (keys НЕ попадает в Player)
+        # 3. Ввод через контроллер
         intent = self.controller.handle_input(keys)
 
-        # Контекст кадра (больше не содержит keys)
         ctx = GameContext(
             platforms=self.level.platforms,
             screen_width=self.config.screen.width,
             player_x=self.player.rect.x if self.player else 0.0,
         )
-        # 4. ПОЛИМОРФИЗМ: единый цикл обновления всех сущностей
-        #    Player использует intent, Enemy его игнорирует.
+        # 4. Единый цикл обновления всех сущностей
         for entity in self.entities:
             entity.update(dt, ctx, intent)
 
-        # 5. Логика игры: все коллизии за один проход (через CollisionDirector)
+        # 5. Логика игры: все коллизии за один проход
         self.collision_director.process(
             self.player,
             self.coins,
@@ -226,9 +240,8 @@ class Game:
 
     # --------------------------------------------------------------
     def _draw(self):
-        # Сущности (player + враги) рисует Renderer через get_render_info()
         self.renderer.draw(
-            self.entities,  # <-- единый список вместо player/enemies
+            self.entities,
             self.coins,
             self.coin_collected,
             self.level.flag_rect,
@@ -241,7 +254,6 @@ class Game:
             self.fade_level,
             self.camera,
         )
-        # player_view рендер УДАЛЁН — отрисовка игрока внутри Renderer.draw_entities
 
     def _update_game_over_fade(self, dt):
         if self.fade_direction == 1:
@@ -251,6 +263,41 @@ class Game:
                 self.fade_direction = 0
 
     # --------------------------------------------------------------
+    def _load_level(self, level_name: str):
+        """Загрузить конкретный уровень и забрать построенный мир из LevelFlow.
+
+        CБРАСЫВАЕТ победные/игровые флаги (won, collision_director.won,
+        game_over) и состояние нового уровня (coins, coin_collected), чтобы
+        переход на следующий уровень не наследовал "победу" от предыдущего.
+        Обновляет current_level_name и поля уровня/мира.
+        """
+        self.level_flow.load_and_setup(level_name)
+        self.current_level_name = level_name
+        self.level = self.level_flow.level
+        self.player = self.level_flow.player
+        self.entities = self.level_flow.entities
+        self.coins = self.level_flow.coins
+        self.coin_collected = self.level_flow.coin_collected
+
+        # Сброс "победных" флагов и игрового состояния на новый уровень.
+        self.won = False
+        self.game_over = False
+        self.collision_director.won = False
+
+    def _advance_to_next_level(self) -> bool:
+        """Переход на следующий уровень через next_level (J2).
+
+        Возвращает True, если уровень пройден и начат следующий; False, если
+        следующего уровня нет (текущий — последний в каталоге, финальная победа).
+        """
+        next_name = self.level_manager.next_level_name(self.current_level_name)
+        if next_name is None:
+            # Последний уровень: остаёмся на экране победы (конец игры).
+            return False
+        self._load_level(next_name)
+        self.state.set(GameState.PLAYING)
+        return True
+
     def _respawn_player(self):
         spawn_point = self.level.player_spawn
         new_player = self.world_factory.create_player(
@@ -276,12 +323,5 @@ class Game:
         self.collision_director.won = False
         self.state.set(GameState.PLAYING)
 
-        # Жизненный цикл уровня делегируется LevelFlow (Фаза 3)
-        self.level_flow.load_and_setup("level_1")
-
-        # Забираем построенный мир из LevelFlow
-        self.level = self.level_flow.level
-        self.player = self.level_flow.player
-        self.entities = self.level_flow.entities
-        self.coins = self.level_flow.coins
-        self.coin_collected = self.level_flow.coin_collected
+        # Рестарт с первого уровня каталога через LevelFlow (J2/каталог).
+        self._load_level("level_1")

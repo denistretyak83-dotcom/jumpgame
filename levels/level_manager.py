@@ -92,6 +92,26 @@ class LevelManager:
         self._cache[level_name] = level_data
         return level_data
 
+    def next_level_name(self, level_name: str) -> str | None:
+        """Имя следующего уровня из поля next_level (или None, если уровня нет).
+
+        Не требует загрузки следующего уровня — только находит имя из уже
+        загруженного LevelData текущего уровня.
+        """
+        data = self.load_level(level_name)
+        return data.next_level
+
+    def load_next_level(self, level_name: str) -> "LevelData | None":
+        """Загрузить следующий уровень по цепочке next_level (переход вперёд).
+
+        Возвращает LevelData следующего уровня или None, если у текущего
+        уровня нет next_level (это последний уровень каталога).
+        """
+        next_name = self.next_level_name(level_name)
+        if next_name is None:
+            return None
+        return self.load_level(next_name)
+
     def clear_cache(self, level_name: str | None = None) -> None:
         if level_name:
             self._cache.pop(level_name, None)

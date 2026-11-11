@@ -69,7 +69,6 @@ def test_builder_defaults_for_optional_fields():
     data = builder.build(raw)
     assert data.next_level is None
     assert data.enemies == []
-    # coins ОБЯЗАТЕЛЬНЫ в билдере (raw["coins"]) — они остаются
     assert data.coins == [("coin", {"x": 10, "y": 20})]
 
 
@@ -84,9 +83,7 @@ def test_builder_default_name_unknown():
 def test_builder_passes_data_to_factories():
     builder = LevelBuilder(good_factories())
     data = builder.build(sample_raw())
-    # фабрика platform получила сырые данные платформы
     assert data.platforms[0] == ("platform", {"x": 0, "y": 300})
-    # фабрика enemy получила данные врага
     assert data.enemies[0] == ("enemy", {"behavior": "walker"})
 
 
@@ -116,7 +113,6 @@ def test_load_level_from_json(tmp_path):
 
 
 def test_load_level_adds_json_extension(tmp_path):
-    # без .json в имени
     write_level(tmp_path, "a.json", sample_raw())
     mgr = LevelManager(tmp_path, good_factories())
     data = mgr.load_level("a")
@@ -149,12 +145,67 @@ def test_invalid_json_raises_runtime_error(tmp_path):
 def test_clear_cache_specific_and_all(tmp_path):
     write_level(tmp_path, "x.json", sample_raw())
     mgr = LevelManager(tmp_path, good_factories())
-    mgr.load_level("x")          # заполнили кеш
+    mgr.load_level("x")
     assert "x" in mgr._cache
     mgr.clear_cache("x")
     assert "x" not in mgr._cache
-    # снова загружаем и чистим всё
     mgr.load_level("x")
     assert mgr._cache
     mgr.clear_cache()
     assert not mgr._cache
+
+
+# --------------------------------------------------------------------------
+# Каталог уровней: загрузка level_2 и переход по next_level (J2)
+# --------------------------------------------------------------------------
+def level_2_raw():
+    """Валидный второй уровень (по схеме I1)."""
+    return {
+        "name": "level_2",
+        "next_level": None,
+        "player_spawn": {"x": 40, "y": 340},
+        "platforms": [{"x": 0, "y": 380, "w": 220, "h": 30}],
+        "coins": [{"x": 170, "y": 250, "w": 20, "h": 20}],
+        "enemies": [
+            {"x": 120, "y": 350, "left": 110, "right": 220,
+             "behavior": "walker", "sprite": "walker", "type": "enemy", "w": 35, "h": 35}
+        ],
+        "flag": {"x": 400, "y": 140, "w": 30, "h": 60},
+    }
+
+
+def test_load_level_2_from_json(tmp_path):
+    write_level(tmp_path, "level_2.json", level_2_raw())
+    mgr = LevelManager(tmp_path, good_factories())
+    data = mgr.load_level("level_2")
+    assert data.name == "level_2"
+    assert data.next_level is None  # последний уровень каталога
+    assert len(data.platforms) == 1
+    assert len(data.enemies) == 1
+    assert data.flag_rect == ("flag", {"x": 400, "y": 140, "w": 30, "h": 60})
+
+
+def test_next_level_name_follows_chain(tmp_path):
+    write_level(tmp_path, "level_1.json", sample_raw(next_level="level_2"))
+    write_level(tmp_path, "level_2.json", level_2_raw())
+    mgr = LevelManager(tmp_path, good_factories())
+    assert mgr.next_level_name("level_1") == "level_2"
+    assert mgr.next_level_name("level_2") is None  # конец цепочки
+
+
+def test_load_next_level_transitions(tmp_path):
+    write_level(tmp_path, "level_1.json", sample_raw(next_level="level_2"))
+    write_level(tmp_path, "level_2.json", level_2_raw())
+    mgr = LevelManager(tmp_path, good_factories())
+    nxt = mgr.load_next_level("level_1")
+    assert nxt is not None
+    assert nxt.name == "level_2"       # перешли на следующий уровень
+    assert nxt.flag_rect == ("flag", {"x": 400, "y": 140, "w": 30, "h": 60})
+    assert mgr.load_next_level("level_2") is None
+
+
+def test_load_level_with_dot_json_name(tmp_path):
+    write_level(tmp_path, "level_2.json", level_2_raw())
+    mgr = LevelManager(tmp_path, good_factories())
+    data = mgr.load_level("level_2.json")
+    assert data.name == "level_2"

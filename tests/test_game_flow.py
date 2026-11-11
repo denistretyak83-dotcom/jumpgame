@@ -1,13 +1,21 @@
 """Тесты CollisionDirector: обработка коллизий в игровые правила (Фаза 3)."""
+import collections
 import importlib.util
+import unittest.mock
 
 import pytest
 
 pygame_available = importlib.util.find_spec("pygame") is not None
-from core.event_bus import GameEvents
-from core.gameplay import CollisionDirector
-from core.state_manager import GameState, StateManager
-from models.collision_system import CollisionResult
+try:
+    import pygame  # noqa: E402,F401
+except ImportError:  # pragma: no cover
+    pygame = None
+
+from core.event_bus import GameEvents  # noqa: E402
+from core.game import Game  # noqa: E402
+from core.gameplay import CollisionDirector  # noqa: E402
+from core.state_manager import GameState, StateManager  # noqa: E402
+from models.collision_system import CollisionResult  # noqa: E402
 
 pytestmark = pytest.mark.skipif(
     not pygame_available, reason="pygame недоступен (нужен pygame.Rect)"
@@ -152,12 +160,10 @@ def test_process_uses_collision_system_with_correct_args():
     assert player not in called['enemies']
     assert enemy in called['enemies']
 
+
 # --------------------------------------------------------------------------
 # Тесты на Game._update_game_over_fade (метод остался в Game)
 # --------------------------------------------------------------------------
-from core.game import Game
-
-
 def _make_game_fade():
     g = object.__new__(Game)
     g.fade_direction = 1
@@ -191,3 +197,152 @@ def test_game_over_fade_idle_when_direction_zero():
     g.fade_level = 50
     g._update_game_over_fade(1.0)
     assert g.fade_level == 50
+
+
+# --------------------------------------------------------------------------
+# Переход на следующий уровень (J2) + рестарт после победы на последнем уровне
+# --------------------------------------------------------------------------
+class _FakeLevelManager:
+    """Имитация LevelManager.next_level_name."""
+
+    def __init__(self, next_for_first):
+        self._next = next_for_first
+
+    def next_level_name(self, level_name):
+        return self._next
+
+
+class _FakeStateManager:
+    """Имитация StateManager (has_ended / set / current)."""
+
+    def __init__(self, initial):
+        self.current = initial
+
+    def set(self, new_state):
+        self.current = new_state
+
+    def has_ended(self):
+        return self.current in (GameState.WON, GameState.GAME_OVER)
+
+    def is_playing(self):
+        return self.current is GameState.PLAYING
+
+
+def _pressed(*keys):
+    """Возвращает объект, имитирующий pygame.key.get_pressed()."""
+    pressed = collections.defaultdict(bool)
+    for k in keys:
+        pressed[k] = True
+    return pressed
+
+
+def _run_update(g, pressed_keys=()):
+    with unittest.mock.patch.object(pygame.key, "get_pressed", return_value=_pressed(*pressed_keys)):
+        g._update(0.016)
+
+
+def _make_game_for_won():
+    """Game-объект в состоянии WON на (последнем) уровне, где нет следующего."""
+    g = object.__new__(Game)
+    g.current_level_name = "level_2"
+    g.won = True
+    g.game_over = False
+    g.collision_director = type("CD", (), {"won": True})()
+    g.level_manager = _FakeLevelManager(None)  # нет следующего уровня
+    g.state = _FakeStateManager(GameState.WON)
+    g._load_level_calls = []
+    g._load_level = lambda name: g._load_level_calls.append(name)
+    g.reset_calls = []
+
+    def _reset():
+        # Имитируем реальный reset_run_state: переключает состояние на PLAYING.
+        g.reset_calls.append("reset")
+        g.state.current = GameState.PLAYING
+
+    g.reset_run_state = _reset
+    return g
+
+
+def test_won_on_last_level_no_r_stays_on_win_screen():
+    g = _make_game_for_won()
+    g._advance_to_next_level = lambda: False  # последний уровень (level_2)
+    _run_update(g)  # R не нажат
+    assert g.reset_calls == []            # не рестартуем
+    assert g.state.current is GameState.WON  # остаёмся на экране победы
+
+
+def test_won_on_last_level_r_restarts():
+    g = _make_game_for_won()
+    g._advance_to_next_level = lambda: False  # последний уровень (level_2)
+    _run_update(g, pressed_keys=(pygame.K_r,))  # R нажат
+    assert g.reset_calls == ["reset"]      # рестарт выполнен
+    assert g.state.current is not GameState.WON  # состояние переключено reset'ом
+
+
+def test_won_with_next_level_advances_not_restart():
+    # Уровень НЕ последний: переходим дальше, R не проверяется.
+    g = _make_game_for_won()
+    advanced = []
+
+    def _advance():
+        advanced.append(True)
+        return True
+
+    g._advance_to_next_level = _advance
+    # даже если R нажат, переход происходит раньше
+    _run_update(g, pressed_keys=(pygame.K_r,))
+    assert advanced == [True]
+    assert g.reset_calls == []
+
+
+def test_advance_to_next_level_loads_next_and_plays():
+    g = object.__new__(Game)
+    g.current_level_name = "level_1"
+    g.level_manager = _FakeLevelManager("level_2")
+    g.state = _FakeStateManager(GameState.WON)
+    g.loaded = []
+    g.won = True
+    g.game_over = False
+    g.collision_director = type("CD", (), {"won": True})()
+    g._load_level = lambda name: g.loaded.append(name)
+    res = g._advance_to_next_level()
+    assert res is True
+    assert g.loaded == ["level_2"]
+    assert g.state.current is GameState.PLAYING
+
+
+def test_advance_to_next_level_none_is_last_level():
+    g = object.__new__(Game)
+    g.current_level_name = "level_2"
+    g.level_manager = _FakeLevelManager(None)
+    g.state = _FakeStateManager(GameState.WON)
+    g.loaded = []
+    g._load_level = lambda name: g.loaded.append(name)
+    res = g._advance_to_next_level()
+    assert res is False
+    assert g.loaded == []
+    assert g.state.current is GameState.WON
+
+
+def test_load_level_resets_won_flags_and_coins():
+    g = object.__new__(Game)
+    g.current_level_name = "level_1"
+    g.won = True
+    g.game_over = True
+    g.collision_director = type("CD", (), {"won": True})()
+
+    class FakeLevelFlow:
+        def load_and_setup(self, name):
+            self.level = object()
+            self.player = object()
+            self.entities = [object()]
+            self.coins = [object(), object()]
+            self.coin_collected = [False, False]
+
+    g.level_flow = FakeLevelFlow()
+    g._load_level("level_1")
+    assert g.won is False
+    assert g.game_over is False
+    assert g.collision_director.won is False
+    assert g.coin_collected == [False, False]
+    assert g.current_level_name == "level_1"
