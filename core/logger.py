@@ -7,9 +7,11 @@ max_files файлов (решение проблемы бесконечного
 """
 import time
 import traceback
-from enum import IntEnum
+from contextlib import suppress
 from datetime import datetime
+from enum import IntEnum
 from pathlib import Path
+
 from .config import LogConfig
 
 # Безопасный импорт GameEvents (ПАТЧ 1): logger может грузиться первым
@@ -88,18 +90,14 @@ class GameLogger:
         for path in files:
             age_days = (now - path.stat().st_mtime) / 86400.0
             if age_days > self.config.max_age_days:
-                try:
+                with suppress(OSError):
                     path.unlink()
-                except OSError:
-                    pass
 
         # 2) Предохранитель по количеству (удаляем самые старые)
         files = sorted(self.log_dir.glob("game_*.log"))
         while len(files) > self.config.max_files:
-            try:
+            with suppress(OSError):
                 files[0].unlink()
-            except OSError:
-                pass
             files = sorted(self.log_dir.glob("game_*.log"))
 
     # ------------------------------------------------------------------
@@ -173,10 +171,7 @@ class GameLogger:
     def _make_handler(self, source, template):
         """Обработчик пишет в ТОТ же логгер, на котором вызван attach() (DI)."""
         def handler(*args, **kwargs):
-            if args and len(args) == 1:
-                value = args[0]
-            else:
-                value = ", ".join(str(a) for a in args)
+            value = args[0] if args and len(args) == 1 else ", ".join(str(a) for a in args)
             msg = template.format(value)
             self.info(source, msg)     # ← self, не глобальный logger
         return handler

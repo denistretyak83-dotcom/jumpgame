@@ -8,8 +8,9 @@
   player: idle, run_left, run_right, jump
   enemy:  walk
 """
-from views.character_view import CharacterView
 from views.animation import Animation
+from views.character_view import CharacterView
+
 
 class SpriteCache:
     """Содержит CharacterView для каждого типа сущности."""

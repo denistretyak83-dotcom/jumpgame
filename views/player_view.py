@@ -31,12 +31,10 @@ class PlayerView:
             return
 
         # 3. Отрисовка с учетом направления (влево/вправо)
-        if player.facing_left:
-            # Смотрим, какие анимации нужно переворачивать по горизонтали
-            # В оригинальном коде это было 'idle', 'jump' или 'run_l'
-            if player.current_anim is player.animations['idle'] or \
-                    player.current_anim is player.animations['jump']:
-                frame = pygame.transform.flip(frame, True, False)
+        if player.facing_left and (
+                player.current_anim is player.animations['idle'] or
+                player.current_anim is player.animations['jump']):
+            frame = pygame.transform.flip(frame, True, False)
 
         # 4. Блик (blit)
         # В оригинале использовалось player.rect.bottom, здесь используем player.rect

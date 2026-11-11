@@ -1,5 +1,5 @@
 """Выделенные сервисы состояния игры (SRP: каждый отвечает за одно)."""
-from typing import Optional
+
 from core.event_bus import GameEvents
 
 
@@ -47,8 +47,8 @@ class RespawnService:
 
     def __init__(self, world_factory):
         self._world_factory = world_factory
-        self._player: Optional[object] = None
-        self._entities: Optional[list] = None
+        self._player: object | None = None
+        self._entities: list | None = None
 
     def bind(self, entities: list, spawn, event_bus) -> None:
         """Привязывает список сущностей и создаёт первого игрока."""

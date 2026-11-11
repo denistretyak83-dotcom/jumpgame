@@ -7,6 +7,7 @@ DI (R3): размеры экрана инжектируются через ко�
 также теперь получает размеры, а не читает глобальный settings).
 """
 import pygame
+
 from core.camera import ParallaxCamera
 
 

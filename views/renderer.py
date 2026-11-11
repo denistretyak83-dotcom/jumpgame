@@ -2,8 +2,8 @@
 import pygame
 
 from views.background import RetroBackground
+from views.hud import draw_pixelated_fade, draw_retro_hud
 from views.tiles import RetroTiles
-from views.hud import draw_retro_hud, draw_pixelated_fade
 
 
 class Renderer:

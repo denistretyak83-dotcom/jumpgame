@@ -11,9 +11,10 @@ Usage:
     bus.unsubscribe(token)         # при уничтожении подписчика
     bus.emit(GameEvents.COIN_COLLECTED, score)
 """
-from typing import Callable, Dict, List, Optional, Tuple
 import itertools
 import logging
+from collections.abc import Callable
+from contextlib import suppress
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,8 @@ class EventBus:
     """Событийная шина с токенизированной подпиской и изоляцией ошибок."""
 
     def __init__(self) -> None:
-        self._handlers: Dict[str, List[Callable]] = {}
-        self._tokens: Dict[int, Tuple[str, Callable]] = {}
+        self._handlers: dict[str, list[Callable]] = {}
+        self._tokens: dict[int, tuple[str, Callable]] = {}
 
     # ------------------------------------------------------------------
     # Подписка
@@ -40,15 +41,13 @@ class EventBus:
         self._tokens[token] = (event, callback)
         return token
 
-    def unsubscribe(self, token: Optional[int]) -> None:
+    def unsubscribe(self, token: int | None) -> None:
         """Отписывает обработчик по токену. Безопасен для повторных вызовов."""
         if token is None or token not in self._tokens:
             return
         event, callback = self._tokens.pop(token)
-        try:
+        with suppress(KeyError, ValueError):
             self._handlers[event].remove(callback)
-        except (KeyError, ValueError):
-            pass  # обработчик уже удалён — не критично
 
     # ------------------------------------------------------------------
     # Эмиссия

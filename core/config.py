@@ -2,7 +2,6 @@
 import json
 import pathlib
 from dataclasses import dataclass, field
-from typing import Tuple, Dict, List
 
 # --- Data Classes ---
 
@@ -36,7 +35,7 @@ class PlayerConfig:
     width: int = 40
     height: int = 50
     speed: float = 350.0
-    spawn: List[int] = field(default_factory=lambda: [50, 400])
+    spawn: list[int] = field(default_factory=lambda: [50, 400])
 
 
 @dataclass
@@ -92,7 +91,7 @@ class Settings:
         if not full_path.exists():
             raise FileNotFoundError(f"Config file not found: {full_path}")
 
-        with open(full_path, "r", encoding="utf-8") as f:
+        with open(full_path, encoding="utf-8") as f:
             data = json.load(f)
 
         # Загрузка базовых секций
@@ -111,7 +110,7 @@ class Settings:
         self.colors = self._parse_colors(data.get("colors", {}))
 
     @staticmethod
-    def _parse_colors(raw_colors: dict) -> Dict[str, Tuple[int, int, int]]:
+    def _parse_colors(raw_colors: dict) -> dict[str, tuple[int, int, int]]:
         parsed = {}
         for name, color_str in raw_colors.items():
             try:

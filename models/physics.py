@@ -95,8 +95,9 @@ class PhysicsComponent:
             if (entity.rect.bottom >= p.top - 1
                     and entity.rect.bottom <= p.top + tolerance
                     and entity.rect.bottom > p.top - 2
-                    and entity.vel_y >= -0.5):
-                if entity.rect.right > p.left and entity.rect.left < p.right:
-                    grounded = True
-                    break
+                    and entity.vel_y >= -0.5
+                    and entity.rect.right > p.left
+                    and entity.rect.left < p.right):
+                grounded = True
+                break
         entity.on_ground = grounded

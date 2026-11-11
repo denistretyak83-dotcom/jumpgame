@@ -6,7 +6,10 @@
 - RespawnBehavior — компонент возврата копии персонажа.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
+
+
 # ---------------------------------------------------------------------------
 # ПРОТОКОЛ СМЕРТИ (опциональный компонент)
 # ---------------------------------------------------------------------------
@@ -61,13 +64,13 @@ class FallDeathBehavior(DeathBehavior):
     """
 
     def __init__(self,
-                 owner: Optional[Any] = None,
+                 owner: Any | None = None,
                  death_cfg=None,
-                 death_gravity: Optional[float] = None,
+                 death_gravity: float | None = None,
                  screen_height: int = 720,
-                 margin: Optional[int] = None,
-                 launch_vy: Optional[float] = None,
-                 fall_vy: Optional[float] = None):
+                 margin: int | None = None,
+                 launch_vy: float | None = None,
+                 fall_vy: float | None = None):
         # 1) Базовые значения берём из конфига (R5)
         if death_cfg is not None:
             base_gravity = getattr(death_cfg, 'gravity', 1200)

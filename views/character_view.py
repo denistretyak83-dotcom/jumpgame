@@ -8,8 +8,11 @@
   - player_idle, player_jump, enemy_walk -- один набор (нужен flip для idle/jump)
 """
 from dataclasses import dataclass
+
 import pygame
+
 from models.model_state import ModelVisualData
+
 
 @dataclass
 class CharacterVisualState:
@@ -72,18 +75,12 @@ class CharacterView:
             frame = pygame.transform.flip(frame, False, True)
         else:
             # idle: flip по facing_left
-            if state.anim_key == 'idle' and state.facing_left:
-                frame = pygame.transform.flip(frame, True, False)
-            # jump (направленный, кадр 2): flip по facing_left
-            elif state.anim_key == 'jump' and state.facing_left:
+            if state.anim_key == 'idle' and state.facing_left or state.anim_key == 'jump' and state.facing_left:
                 frame = pygame.transform.flip(frame, True, False)
             # jump_neutral (на месте, кадр 1): НЕ флипаем -- нейтральный
             # run_left/run_right/walk: уже повёрнуты ассетами
 
-        if state.y_anchor == 'bottom':
-            y = state.rect.bottom - frame.get_height()
-        else:
-            y = state.rect.y
+        y = state.rect.bottom - frame.get_height() if state.y_anchor == 'bottom' else state.rect.y
 
         return frame, state.rect.x, y
 

@@ -6,9 +6,9 @@ DI-связка (R3): единственное место создания Setti
 """
 import pygame
 
-from core.config import Settings          # класс, а не глобальный экземпляр
-from core.logger import GameLogger
+from core.config import Settings  # класс, а не глобальный экземпляр
 from core.game import Game
+from core.logger import GameLogger
 
 
 def main():

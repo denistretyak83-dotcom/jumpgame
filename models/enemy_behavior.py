@@ -11,7 +11,7 @@
 """
 import math
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 
 
 class EnemyBehavior(ABC):
@@ -142,14 +142,14 @@ class EnemyBehaviorRegistry:
     """Реестр "тип поведения -> фабрика поведения" (OCP)."""
 
     def __init__(self) -> None:
-        self._factories: Dict[str, Callable[[], EnemyBehavior]] = {}
+        self._factories: dict[str, Callable[[], EnemyBehavior]] = {}
         self._fallback_type = "walker"
 
     def register(self, behavior_type: str,
                  behavior_factory: Callable[[], EnemyBehavior]) -> None:
         self._factories[behavior_type] = behavior_factory
 
-    def create(self, behavior_type: Optional[str] = None) -> EnemyBehavior:
+    def create(self, behavior_type: str | None = None) -> EnemyBehavior:
         return self._factories.get(behavior_type or "",
                                    self._factories[self._fallback_type])()
 

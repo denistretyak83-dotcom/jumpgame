@@ -1,8 +1,8 @@
+from core.event_bus import GameEvents
 from models.base_character import BaseCharacter
 from models.behaviors import FallDeathBehavior
-from models.player_state import PlayerStateMachine, IdleState
 from models.model_state import ModelVisualData
-from core.event_bus import GameEvents
+from models.player_state import IdleState, PlayerStateMachine
 
 
 class Player(BaseCharacter):

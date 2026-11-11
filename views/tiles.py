@@ -3,6 +3,7 @@
 variation is lost.
 """
 import random
+
 import pygame
 
 
@@ -88,7 +89,6 @@ class TileFactory:
     def brick_tile(width, height):
         surf = pygame.Surface((width, height))
         brick_color = (200, 80, 40)
-        brick_dark = (150, 55, 25)
         mortar = (120, 40, 20)
         surf.fill(brick_color)
         brick_h = 16

@@ -8,19 +8,20 @@
 Также владеет EnemyBehaviorRegistry (DI) и передаёт его созданным врагам,
 чтобы типы поведения (walker/chaser/...) были известны всем экземплярам Enemy.
 """
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import pygame
 
-from models.player import Player
+from core.config import Settings
 from models.enemy import Enemy
 from models.enemy_behavior import (
-    EnemyBehaviorRegistry,
-    WalkerBehavior,
     ChaserBehavior,
-    FlyerBehavior
+    EnemyBehaviorRegistry,
+    FlyerBehavior,
+    WalkerBehavior,
 )
-from core.config import Settings
+from models.player import Player
 
 # протокол фабрики одного объекта
 ObjectFactory = Callable[[dict], Any]
@@ -33,7 +34,7 @@ class WorldFactory:
         self.assets = asset_loader
         self.config = config or Settings()
         # Внутренний реестр "тип -> фабрика"
-        self._registry: Dict[str, ObjectFactory] = registry or {}
+        self._registry: dict[str, ObjectFactory] = registry or {}
 
         # Реестр поведений врагов (DI): владеет здесь и передаёт в Enemy.
         self.enemy_behavior_registry = EnemyBehaviorRegistry()
@@ -68,7 +69,7 @@ class WorldFactory:
             )
         return factory(data)
 
-    def entity_factories(self) -> Dict[str, ObjectFactory]:
+    def entity_factories(self) -> dict[str, ObjectFactory]:
         """Вернуть dict фабрик для LevelManager (единообразные обёртки)."""
         return {
             obj_type: (lambda d, t=obj_type: self.create(t, d))

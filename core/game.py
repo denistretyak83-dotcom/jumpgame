@@ -1,25 +1,26 @@
 """Game -- Orchestrator: main loop, state, and MVC wiring."""
 import pathlib
+
 import pygame
 
-from core.config import Settings
-from core.event_bus import EventBus, GameEvents
-from core.state_manager import StateManager, GameState
-from core.camera import ParallaxCamera
-from core.asset_loader import AssetLoader
-from core.context import GameContext
-from views.renderer import Renderer
-from core.game_services import LifeManager, ScoreManager, RespawnService
-from models.factory import WorldFactory
-from levels.level_manager import LevelManager
-from controllers.player_controller import PlayerController
 from audio.audio_listener import attach_audio_listener
 from audio.sound_manager import SoundManager
-from models.collision_system import CollisionSystem
+from controllers.player_controller import PlayerController
+from core.asset_loader import AssetLoader
+from core.camera import ParallaxCamera
+from core.config import Settings
+from core.context import GameContext
+from core.event_bus import EventBus, GameEvents
+from core.game_services import LifeManager, RespawnService, ScoreManager
 from core.logger import GameLogger
-from views.sprite_cache import SpriteCache
-from models.player import Player
+from core.state_manager import GameState, StateManager
+from levels.level_manager import LevelManager
+from models.collision_system import CollisionSystem
 from models.enemy import Enemy
+from models.factory import WorldFactory
+from models.player import Player
+from views.renderer import Renderer
+from views.sprite_cache import SpriteCache
 
 
 class Game:

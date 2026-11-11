@@ -8,9 +8,8 @@
 новый класс-состояние + регистрация переходов. Существующие НЕ меняются (OCP).
 """
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from typing import Optional
 
+from abc import ABC, abstractmethod
 
 
 class PlayerState(ABC):
@@ -29,13 +28,15 @@ class PlayerState(ABC):
     # ------------- хуки жизни состояния -------------
     def enter(self, player) -> None:
         """Вызывается при входе (например, задать vel_y при прыжке)."""
+        return None   # hook по умолчанию — ничего не делает
 
     def exit(self, player) -> None:
         """Вызывается при выходе из состояния."""
+        return None   # hook по умолчанию
 
     # ------------- переходы -------------
     @abstractmethod
-    def handle(self, player, intent, dt) -> Optional["PlayerState"]:
+    def handle(self, player, intent, dt) -> PlayerState | None:
         """Возвращает новое состояние или None, если остаёмся в текущем."""
 
 
@@ -118,7 +119,7 @@ class FallState(PlayerState):
 class PlayerStateMachine:
     """Владелец текущего состояния игрока."""
 
-    def __init__(self, initial_state: Optional[PlayerState] = None):
+    def __init__(self, initial_state: PlayerState | None = None):
         self._state: PlayerState = initial_state or IdleState()
 
     @property

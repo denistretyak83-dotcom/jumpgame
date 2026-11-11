@@ -1,6 +1,6 @@
 from models.base_character import BaseCharacter
 from models.behaviors import CallableRespawnBehavior
-from models.enemy_behavior import EnemyBehavior, DEFAULT_BEHAVIOR_REGISTRY
+from models.enemy_behavior import DEFAULT_BEHAVIOR_REGISTRY, EnemyBehavior
 from models.model_state import ModelVisualData
 
 

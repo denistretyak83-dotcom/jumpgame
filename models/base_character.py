@@ -1,19 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
+from core.event_bus import GameEvents
 from models.behaviors import DeathBehavior, RespawnBehavior
 from models.entity import Entity
-from models.physics import PhysicsComponent
-from core.event_bus import GameEvents
 from models.model_state import ModelVisualData
+from models.physics import PhysicsComponent
 
 
 class BaseCharacter(Entity, ABC):
 
     def __init__(self, x: int, y: int, width: int, height: int,
                  config=None, event_bus=None,
-                 death_behavior: Optional[DeathBehavior] = None,
-                 respawn_behavior: Optional[RespawnBehavior] = None):
+                 death_behavior: DeathBehavior | None = None,
+                 respawn_behavior: RespawnBehavior | None = None):
         super().__init__(x, y, width, height)
         self.event_bus = event_bus
         self._cfg = config

@@ -8,7 +8,8 @@ CollisionResult БЕЗ мутаций игры. Игровые правила о
 - fall_buffer берётся из settings.json, а не захардкожен.
 """
 from dataclasses import dataclass
-from typing import Any, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
+
 import pygame
 
 
@@ -21,8 +22,8 @@ class Collidable(Protocol):
 @dataclass
 class CollisionResult:
     """Результат одного прохода коллизий за кадр (data-driven, без мутаций)."""
-    coin_index: Optional[int] = None     # индекс подобранной монеты (или None)
-    hit_enemy: Optional[Any] = None      # враг, с которым столкнулись (или None)
+    coin_index: int | None = None     # индекс подобранной монеты (или None)
+    hit_enemy: Any | None = None      # враг, с которым столкнулись (или None)
     hit_flag: bool = False               # коснулись флага
     fell_out: bool = False               # упали ниже экрана
 
@@ -38,9 +39,9 @@ class CollisionSystem:
         self.screen_height = screen_height
         self.fall_buffer = fall_buffer   # теперь из settings, не магия
 
-    def check(self, player_rect: pygame.Rect, coins: List[pygame.Rect],
-              coin_collected: List[bool], enemies: List[Collidable],
-              flag_rect: Optional[pygame.Rect]) -> CollisionResult:
+    def check(self, player_rect: pygame.Rect, coins: list[pygame.Rect],
+              coin_collected: list[bool], enemies: list[Collidable],
+              flag_rect: pygame.Rect | None) -> CollisionResult:
         """Один проход: монеты -> враг -> флаг -> падение."""
         result = CollisionResult()
 

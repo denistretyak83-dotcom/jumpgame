@@ -4,7 +4,9 @@ DI (R3): конфиг инжектируется через конструкто
 создаётся собственный Settings() (но не читается глобальный).
 """
 import os
+
 import pygame
+
 from core.config import Settings
 
 

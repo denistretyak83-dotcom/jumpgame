@@ -1,9 +1,11 @@
 """LevelManager -- loads / builds / caches levels from JSON."""
 import json
-import pathlib
 import logging
+import pathlib
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any
+
 import pygame
 
 logger = logging.getLogger(__name__)
@@ -12,7 +14,7 @@ logger = logging.getLogger(__name__)
 class LevelData:
     """Структурированный результат загрузки уровня."""
     name: str
-    next_level: Optional[str]
+    next_level: str | None
     player_spawn: tuple[float, float]
     platforms: list[pygame.Rect]
     coins: list[pygame.Rect]
@@ -23,11 +25,11 @@ class LevelData:
 class LevelBuilder:
     """Собирает LevelData из сырого JSON, используя factories."""
 
-    def __init__(self, entity_factories: Dict[str, Callable]):
+    def __init__(self, entity_factories: dict[str, Callable]):
         # entity_factories: {"platform": factory_func, "coin": factory_func, ...}
         self.factories = entity_factories
 
-    def build(self, raw: Dict[str, Any]) -> LevelData:
+    def build(self, raw: dict[str, Any]) -> LevelData:
         # Валидация базовых ключей
         required = {"player_spawn", "platforms", "flag"}
         missing = required - raw.keys()
@@ -56,11 +58,11 @@ class LevelBuilder:
 class LevelManager:
     """Тонкий слой: читает JSON, делегирует билдеру, кеширует результаты."""
 
-    def __init__(self, project_root: pathlib.Path, entity_factories: Dict[str, Callable]):
+    def __init__(self, project_root: pathlib.Path, entity_factories: dict[str, Callable]):
         self.project_root = project_root
         self.levels_dir = project_root / "levels"
         self.builder = LevelBuilder(entity_factories)
-        self._cache: Dict[str, LevelData] = {}
+        self._cache: dict[str, LevelData] = {}
 
     def _resolve_path(self, name: str) -> pathlib.Path:
         if not name.endswith(".json"):
@@ -76,17 +78,17 @@ class LevelManager:
 
         path = self._resolve_path(level_name)
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 raw = json.load(f)
         except json.JSONDecodeError as e:
-            raise RuntimeError(f"Failed to parse {path}: {e}")
+            raise RuntimeError(f"Failed to parse {path}: {e}") from e
 
         logger.info(f"Loading level: {level_name}")
         level_data = self.builder.build(raw)
         self._cache[level_name] = level_data
         return level_data
 
-    def clear_cache(self, level_name: Optional[str] = None) -> None:
+    def clear_cache(self, level_name: str | None = None) -> None:
         if level_name:
             self._cache.pop(level_name, None)
         else:

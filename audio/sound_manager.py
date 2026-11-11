@@ -3,9 +3,10 @@
 Ported from the original sounds.py. Synthesis math is preserved exactly.
 Uses pathlib for the music path (in place of the equivalent string join).
 """
-import math
 import array
+import math
 import pathlib
+
 import pygame
 
 
