@@ -8,6 +8,7 @@
 - ChaserBehavior  — преследование игрока по X (через ctx.player_x).
 - FlyerBehavior   — лётун/hover: X-патруль + вертикальная синусоида вокруг
                     базовой Y. Платформы и гравитацию ИГНОРИРУЕТ (в4 1а/2б).
+- JumperBehavior  — X-патруль + периодический прыжок по Y (в пределах зоны).
 """
 
 import math
@@ -139,6 +140,54 @@ class FlyerBehavior(EnemyBehavior):
         enemy.rect.y = int(round(enemy.pos_y))
 
 
+class JumperBehavior(EnemyBehavior):
+    """Прыгающий враг: X-патруль + периодический прыжок по Y.
+
+    Патрулирует по X между bound_left/bound_right (как WalkerBehavior),
+    а по Y совершает периодические прыжки: поднимается вверх на jump_height
+    и плавно возвращается на базовую позицию (base_y). Платформы/гравитацию
+    игнорирует — движение задаётся напрямую, как и у FlyerBehavior.
+    Контракт: float-источник pos_x/pos_y; в rect пишем int(round(...)).
+    """
+
+    def __init__(self, jump_height=30, jump_interval=1.0):
+        self._enemy = None
+        self.jump_height = jump_height
+        self.jump_interval = jump_interval
+        self._time = 0.0
+        self._base_y = 0.0
+
+    def attach(self, enemy) -> None:
+        self._enemy = enemy
+        self._base_y = float(enemy.rect.y)
+
+    def update(self, enemy, dt, ctx=None, intent=None) -> None:
+        # --- X-движение (патруль, как у WalkerBehavior) ---
+        pos_x = enemy.pos_x + enemy.vel_x * dt
+        if pos_x < enemy.bound_left:
+            overrun = enemy.bound_left - pos_x
+            pos_x = enemy.bound_left + overrun
+            enemy.vel_x = abs(enemy.vel_x)
+        elif pos_x + enemy.rect.width > enemy.bound_right:
+            overrun = (pos_x + enemy.rect.width) - enemy.bound_right
+            pos_x = enemy.bound_right - enemy.rect.width - overrun
+            enemy.vel_x = -abs(enemy.vel_x)
+
+        # --- Y-движение (периодический прыжок) ---
+        self._time += dt
+        phase = (self._time / self.jump_interval) % 1.0
+        # sin(pi*phase): 0 -> вверх -> обратно.
+        # Для прыжка вверх: k=+1 поднимает на peak в середине интервала.
+        offset = -self.jump_height * math.sin(math.pi * phase)
+        pos_y = self._base_y + offset
+
+        # --- Синхронизация rect из float-позиции ---
+        enemy.pos_x = pos_x
+        enemy.pos_y = pos_y
+        enemy.rect.x = int(round(enemy.pos_x))
+        enemy.rect.y = int(round(enemy.pos_y))
+
+
 class EnemyBehaviorRegistry:
     """Реестр "тип поведения -> фабрика поведения" (OCP)."""
 
@@ -158,3 +207,4 @@ DEFAULT_BEHAVIOR_REGISTRY = EnemyBehaviorRegistry()
 DEFAULT_BEHAVIOR_REGISTRY.register("walker", WalkerBehavior)
 DEFAULT_BEHAVIOR_REGISTRY.register("chaser", ChaserBehavior)
 DEFAULT_BEHAVIOR_REGISTRY.register("flyer", FlyerBehavior)
+DEFAULT_BEHAVIOR_REGISTRY.register("jumper", JumperBehavior)

@@ -19,6 +19,7 @@ from models.enemy_behavior import (
     ChaserBehavior,
     EnemyBehaviorRegistry,
     FlyerBehavior,
+    JumperBehavior,
     WalkerBehavior,
 )
 from models.platform import Platform
@@ -50,6 +51,7 @@ class WorldFactory:
         self.enemy_behavior_registry.register("enemy", WalkerBehavior)
         self.enemy_behavior_registry.register("chaser", ChaserBehavior)
         self.enemy_behavior_registry.register("flyer", FlyerBehavior)
+        self.enemy_behavior_registry.register("jumper", JumperBehavior)
 
     # ------------------------------------------------------------------
     # Реестр объектов (OCP)
@@ -88,11 +90,7 @@ class WorldFactory:
         self.register("enemy", lambda d: self.create_enemy(d))
 
     def _build_platform(self, data: dict, name: str = "platform") -> Platform:
-        """Построить типизированную платформу (task C, OCP).
-
-        Читает rect-ключи x/y/w/h и стиль "style" (по умолчанию grass_top).
-        Стиль регистрируется как данные, а сборка — через WorldFactory.
-        """
+        """Построить типизированную платформу (task C, OCP)."""
         try:
             x = int(data["x"])
             y = int(data["y"])
@@ -125,11 +123,7 @@ class WorldFactory:
     # ------------------------------------------------------------------
 
     def create_enemy(self, data: dict) -> Enemy:
-        """Строит врага (data-driven + DI registry поведения).
-
-        Поведение выбирается Enemy по ключу "behavior" из enemy_data;
-        "left"/"right" — патрульные границы (становятся bound_left/right).
-        """
+        """Строит врага (data-driven + DI registry поведения)."""
         return Enemy(
             x=data["x"],
             y=data["y"],
