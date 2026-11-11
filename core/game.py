@@ -15,6 +15,7 @@ from core.event_bus import EventBus, GameEvents
 from core.game_services import LifeManager, RespawnService, ScoreManager
 from core.gameplay import CollisionDirector
 from core.level_flow import LevelFlow
+from core.level_transition import LevelTransition
 from core.logger import GameLogger
 from core.player_flow import PlayerFlow
 from core.state_manager import GameState, StateManager
@@ -112,14 +113,15 @@ class Game:
             camera=self.camera,
             sounds=self.sounds,
         )
+        # НОВОЕ: LevelTransition (SRP) — каталог уровней и переходы вынесены из Game.
+        self.level_transition = LevelTransition(
+            level_manager=self.level_manager,
+            level_flow=self.level_flow,
+        )
         self.life_manager = LifeManager(self.config.game.lives, self.event_bus)
         self.score_manager = ScoreManager(self.event_bus)
 
         # --- Game State Vars ---
-
-        # Текущий загруженный уровень (как ключ каталога, напр. "level_1").
-        # Отсюда берём next_level для перехода на следующий уровень.
-        self.current_level_name = "level_1"
 
         self.frame_count = 0
         self.fade_level = 0
@@ -152,6 +154,24 @@ class Game:
         )
         # Initialize
         self.reset_run_state()
+
+    @property
+    def current_level_name(self):
+        # источник правды — в LevelTransition; если его нет (ранняя инициализация),
+        # возвращаем внутренний кэш
+        if hasattr(self, "_level_transition_cache"):
+            return self._level_transition_cache
+        return self.level_transition.current_level_name
+
+    @current_level_name.setter
+    def current_level_name(self, value):
+        # Если level_transition ещё не создан, кэшируем во временный атрибут.
+        # Как только он появится в __init__, синхронизируем.
+        if not hasattr(self, "level_transition"):
+            self._level_transition_cache = value
+            return
+        self.level_transition.current_level_name = value
+        self._level_transition_cache = value
 
     # --- Helpers ---
     def _make_coin_icon(self):
@@ -280,43 +300,52 @@ class Game:
 
     # --------------------------------------------------------------
     def _load_level(self, level_name: str):
-        """Загрузить конкретный уровень и забрать построенный мир из LevelFlow.
+        """Делегирует загрузку уровня LevelTransition и раскладывает мир по полям.
 
-        CБРАСЫВАЕТ победные/игровые флаги (won, collision_director.won,
-        game_over) и состояние нового уровня (coins, coin_collected), чтобы
-        переход на следующий уровень не наследовал "победу" от предыдущего.
-        Обновляет current_level_name и поля уровня/мира.
+        Побочный эффект: сбрасывает победные/игровые флаги.
         """
-        self.level_flow.load_and_setup(level_name)
-        self.current_level_name = level_name
-        self.level = self.level_flow.level
-        self.player = self.level_flow.player
-        self.entities = self.level_flow.entities
-        self.coins = self.level_flow.coins
-        self.coin_collected = self.level_flow.coin_collected
+        world = self.level_transition.load_level(level_name)
+        self.current_level_name = self.level_transition.current_level_name
+        self.level = world["level"]
+        self.player = world["player"]
+        self.entities = world["entities"]
+        self.coins = world["coins"]
+        self.coin_collected = world["coin_collected"]
 
-        # Привязка к PlayerFlow (новый уровень -> новый спавн, новый игрок)
+        # Привязка к PlayerFlow
         self.player_flow.bind_level(self.level)
         self.player_flow.bind_player(self.player)
 
-        # Сброс "победных" флагов и игрового состояния на новый уровень.
         self.won = False
         self.game_over = False
         self.collision_director.won = False
 
     def _advance_to_next_level(self) -> bool:
-        """Переход на следующий уровень через next_level (J2).
+        """Делегирует переход на следующий уровень LevelTransition.
 
-        Возвращает True, если уровень пройден и начат следующий; False, если
-        следующего уровня нет (текущий — последний в каталоге, финальная победа).
+        True — следующий уровень загружен (снова играем); False — следующего
+        нет (последний уровень, остаёмся на экране победы).
         """
-        next_name = self.level_manager.next_level_name(self.current_level_name)
-        if next_name is None:
-            # Последний уровень: остаёмся на экране победы (конец игры).
+        world = self.level_transition.advance_to_next_level()
+        if world is None:
             return False
-        self._load_level(next_name)
+        self._apply_world(world)
         self.state.set(GameState.PLAYING)
         return True
+
+    def _apply_world(self, world: dict):
+        """Раскладывает мир, возвращённый LevelTransition, по атрибутам Game."""
+        self.current_level_name = self.level_transition.current_level_name
+        self.level = world["level"]
+        self.player = world["player"]
+        self.entities = world["entities"]
+        self.coins = world["coins"]
+        self.coin_collected = world["coin_collected"]
+        self.player_flow.bind_level(self.level)
+        self.player_flow.bind_player(self.player)
+        self.won = False
+        self.game_over = False
+        self.collision_director.won = False
 
     def _respawn_player(self):
         spawn_point = self.level.player_spawn
@@ -343,5 +372,5 @@ class Game:
         self.collision_director.won = False
         self.state.set(GameState.PLAYING)
 
-        # Рестарт с первого уровня каталога через LevelFlow (J2/каталог).
+        # Рестарт с первого уровня через LevelTransition.
         self._load_level("level_1")

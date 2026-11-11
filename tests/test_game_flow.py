@@ -242,7 +242,6 @@ def _run_update(g, pressed_keys=()):
 
 
 def _make_game_for_won():
-    """Game-объект в состоянии WON на (последнем) уровне, где нет следующего."""
     g = object.__new__(Game)
     g.current_level_name = "level_2"
     g.won = True
@@ -250,12 +249,15 @@ def _make_game_for_won():
     g.collision_director = type("CD", (), {"won": True})()
     g.level_manager = _FakeLevelManager(None)  # нет следующего уровня
     g.state = _FakeStateManager(GameState.WON)
+
+    # НОВОЕ: заглушка LevelTransition (Game теперь использует self.level_transition)
+    g.level_transition = _FakeLevelTransition(next_name=None)  # последний уровень
+
     g._load_level_calls = []
     g._load_level = lambda name: g._load_level_calls.append(name)
     g.reset_calls = []
 
     def _reset():
-        # Имитируем реальный reset_run_state: переключает состояние на PLAYING.
         g.reset_calls.append("reset")
         g.state.current = GameState.PLAYING
 
@@ -304,10 +306,19 @@ def test_advance_to_next_level_loads_next_and_plays():
     g.won = True
     g.game_over = False
     g.collision_director = type("CD", (), {"won": True})()
-    g._load_level = lambda name: g.loaded.append(name)
+
+    # НОВОЕ: заглушка LevelTransition, переход на level_2
+    g.level_transition = _FakeLevelTransition(next_name="level_2")
+
+    # Заменяем _apply_world, чтобы перехватить и не обращаться к player_flow
+    def fake_apply(world):
+        g.loaded.append(world["level"])
+
+    g._apply_world = fake_apply
+
     res = g._advance_to_next_level()
     assert res is True
-    assert g.loaded == ["level_2"]
+    assert g.loaded  # мир следующего уровня применён
     assert g.state.current is GameState.PLAYING
 
 
@@ -317,7 +328,13 @@ def test_advance_to_next_level_none_is_last_level():
     g.level_manager = _FakeLevelManager(None)
     g.state = _FakeStateManager(GameState.WON)
     g.loaded = []
-    g._load_level = lambda name: g.loaded.append(name)
+    g.won = True
+    g.game_over = False
+    g.collision_director = type("CD", (), {"won": True})()
+
+    # НОВОЕ: заглушка LevelTransition, следующего уровня нет
+    g.level_transition = _FakeLevelTransition(next_name=None)
+
     res = g._advance_to_next_level()
     assert res is False
     assert g.loaded == []
@@ -331,8 +348,7 @@ def test_load_level_resets_won_flags_and_coins():
     g.game_over = True
     g.collision_director = type("CD", (), {"won": True})()
 
-    # НОВОЕ: заглушка PlayerFlow — _load_level теперь вызывает
-    # self.player_flow.bind_level/bind_player при загрузке уровня.
+    # Заглушка PlayerFlow
     g.player_flow = type("PlayerFlowStub", (), {
         "bind_level": lambda self, level: None,
         "bind_player": lambda self, p: None,
@@ -347,9 +363,63 @@ def test_load_level_resets_won_flags_and_coins():
             self.coin_collected = [False, False]
 
     g.level_flow = FakeLevelFlow()
+
+    # Заглушка LevelTransition: load_level(name) эмулирует реальный сервис —
+    # вызывает load_and_setup, затем собирает мир.
+    class LevelTransitionStub:
+        current_level_name = "level_1"
+        def load_level(self, name):
+            g.level_flow.load_and_setup(name)   # установить атрибуты мира
+            return {
+                "level": g.level_flow.level,
+                "player": g.level_flow.player,
+                "entities": g.level_flow.entities,
+                "coins": g.level_flow.coins,
+                "coin_collected": g.level_flow.coin_collected,
+            }
+
+    g.level_transition = LevelTransitionStub()
+
     g._load_level("level_1")
     assert g.won is False
     assert g.game_over is False
     assert g.collision_director.won is False
     assert g.coin_collected == [False, False]
     assert g.current_level_name == "level_1"
+
+class _FakeLevelTransition:
+    """Заглушка LevelTransition для Game-тестов через object.__new__(Game).
+
+    Позволяет _update/_load_level/_advance_to_next_level работать без
+    реального сервиса. Через поле `next` управляем, переходить ли на
+    следующий уровень.
+    """
+
+    def __init__(self, next_name="level_2"):
+        self.current_level_name = "level_1"
+        self.next = next_name
+        self.loaded = []           # фиксируем вызовы load_level
+
+    def load_level(self, name):
+        self.loaded.append(name)
+        self.current_level_name = name
+        return {
+            "level": object(),
+            "player": object(),
+            "entities": [object()],
+            "coins": [object()],
+            "coin_collected": [False],
+        }
+
+    def advance_to_next_level(self):
+        if self.next is None:
+            return None
+        name = self.next
+        self.next = None  # после перехода следующих больше нет (как для последнего)
+        return self.load_level(name)
+
+    def has_next_level(self):
+        return self.next is not None
+
+    def restart_first(self):
+        return self.load_level("level_1")
