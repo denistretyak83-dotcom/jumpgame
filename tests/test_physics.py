@@ -221,3 +221,34 @@ def test_update_grounded_false_when_below_tolerance():
     platform = pygame.Rect(0, 100, 200, 20)
     pc.update_grounded(owner, platforms=[platform])
     assert owner.on_ground is False
+
+# --------------------------------------------------------------------------
+# Контракты-протоколы физики (Фаза 3, 4.3)
+# --------------------------------------------------------------------------
+from models.physics import PhysicsBody, PhysicsEngine
+
+
+class FakeBody:
+    def __init__(self):
+        self.rect = None
+        self.vel_x = 0.0
+        self.vel_y = 0.0
+        self.on_ground = False
+        self.is_dead = False
+
+
+def test_physics_component_satisfies_engine_protocol():
+    assert isinstance(PhysicsComponent(), PhysicsEngine)
+
+
+def test_physics_engine_protocol_detects_missing_method():
+    class NoImpl:
+        pass
+
+    assert not isinstance(NoImpl(), PhysicsEngine)
+
+
+def test_physics_body_protocol_atttributes_present():
+    b = FakeBody()
+    for attr in ("rect", "vel_x", "vel_y", "on_ground", "is_dead"):
+        assert hasattr(b, attr)

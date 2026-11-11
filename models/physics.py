@@ -10,6 +10,41 @@ core.config.PhysicsConfig (публичный конфиг из settings.json).
 """
 
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
+
+import pygame
+
+
+@runtime_checkable
+class PhysicsBody(Protocol):
+    """Что сущность обязана предоставлять, чтобы физика могла её двигать.
+
+    Контракт физики (DIP): PhysicsComponent работает только с этим
+    интерфейсом, а не с конкретным классом (Player/Enemy/BaseCharacter).
+    """
+
+    rect: pygame.Rect
+    vel_x: float
+    vel_y: float
+    on_ground: bool
+    is_dead: bool
+
+
+@runtime_checkable
+class PhysicsEngine(Protocol):
+    """Интерфейс компонента физики, который ожидает владелец сущности.
+
+    Позволяет подменять реализацию физики (например, для тестов или
+    других схем движения) без изменения BaseCharacter.
+    """
+
+    def apply(self, entity: PhysicsBody, dt: float, platforms) -> bool:
+        """Применить физику; True — удар головой."""
+        ...
+
+    def update_grounded(self, entity: PhysicsBody, platforms) -> None:
+        """Обновить флаг on_ground по касанию платформ."""
+        ...
 
 
 @dataclass

@@ -4,7 +4,7 @@ from core.event_bus import GameEvents
 from models.behaviors import DeathBehavior, RespawnBehavior
 from models.entity import Entity
 from models.model_state import ModelVisualData
-from models.physics import PhysicsComponent
+from models.physics import PhysicsComponent, PhysicsEngine
 
 
 class BaseCharacter(Entity, ABC):
@@ -31,7 +31,7 @@ class BaseCharacter(Entity, ABC):
         self.is_dead = False
 
         # --- композиция: физика (R1) + поведенческие компоненты (R4) ---
-        self.physics = PhysicsComponent(config)
+        self.physics: PhysicsEngine = PhysicsComponent(config)
         self.death_behavior = None
         self.respawn_behavior = None
         if death_behavior is not None:
