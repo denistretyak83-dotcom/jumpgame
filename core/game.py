@@ -13,6 +13,7 @@ from core.config import Settings
 from core.context import GameContext
 from core.event_bus import EventBus, GameEvents
 from core.game_services import LifeManager, RespawnService, ScoreManager
+from core.gameplay import CollisionDirector
 from core.logger import GameLogger
 from core.state_manager import GameState, StateManager
 from levels.level_manager import LevelManager
@@ -117,7 +118,14 @@ class Game:
         # Event Listeners
         self.life_manager = LifeManager(self.config.game.lives, self.event_bus)
         self.score_manager = ScoreManager(self.event_bus)
-
+        # --- Gameplay: обработка коллизий (вынесено из Game, Фаза 3) ---
+        self.collision_director = CollisionDirector(
+            collision_system=self.collision_system,
+            score_manager=self.score_manager,
+            event_bus=self.event_bus,
+            sounds=self.sounds,
+            state=self.state,
+        )
         # Initialize
         self.reset_run_state()
 
@@ -192,8 +200,14 @@ class Game:
         for entity in self.entities:
             entity.update(dt, ctx, intent)
 
-        # 5. Логика игры: все коллизии за один проход
-        self._apply_collisions(dt)
+        # 5. Логика игры: все коллизии за один проход (через CollisionDirector)
+        self.collision_director.process(
+            self.player,
+            self.coins,
+            self.coin_collected,
+            self.entities,
+            self.level.flag_rect,
+        )
 
         # 6. Камера и счётчик
         self.camera.update(self.player.rect.x)
@@ -211,46 +225,12 @@ class Game:
             self.life_manager.lives,
             self.frame_count,
             self.state,
-            self.won,
+            self.collision_director.won,
             self.game_over,
             self.fade_level,
             self.camera,
         )
         # player_view рендер УДАЛЁН — отрисовка игрока внутри Renderer.draw_entities
-
-    def _apply_collisions(self, dt):
-        """Централизованная обработка всех коллизий за один проход (R6)."""
-        c = self.collision_system.check(
-            self.player.rect,
-            self.coins,
-            self.coin_collected,
-            [e for e in self.entities if e is not self.player],
-            self.level.flag_rect,
-        )
-
-        # --- монета ---
-        if c.coin_index is not None:
-            self.coin_collected[c.coin_index] = True
-            self.score_manager.add_points(1)
-            self.event_bus.emit(GameEvents.COIN_COLLECTED, self.score_manager.score)
-            self.sounds.play_coin()
-
-        # --- враг ---
-        if c.hit_enemy is not None:
-            self.event_bus.emit(GameEvents.PLAYER_DIED)
-            self.player.die(launch_up=False)
-
-        # --- флаг ---
-        if c.hit_flag:
-            self.event_bus.emit(GameEvents.LEVEL_WON)
-            self.won = True
-            self.state.set(GameState.WON)
-            self.sounds.play_win()
-
-        # --- падение ---
-        if c.fell_out:
-            self.event_bus.emit(GameEvents.PLAYER_DIED)
-            self.player.die(launch_up=False)
 
     def _update_game_over_fade(self, dt):
         if self.fade_direction == 1:
@@ -281,6 +261,7 @@ class Game:
         self.fade_level = 0
         self.fade_direction = 0
         self.won = False
+        self.collision_director.won = False
         self.game_over = False
         self.state.set(GameState.PLAYING)
 

@@ -1,17 +1,12 @@
-"""Тесты Game: _apply_collisions и _update_game_over_fade (изолировано).
-
-Используем object.__new__(Game), чтобы обойти тяжёлый pygame-конструктор,
-и подставляем фейковые зависимости. Это фиксирует текущее поведение
-_apply_collisions ДО декомпозиции (пункт 4.7 плана: тесты Game до выноса).
-"""
+"""Тесты CollisionDirector: обработка коллизий в игровые правила (Фаза 3)."""
 import importlib.util
 
 import pytest
 
 pygame_available = importlib.util.find_spec("pygame") is not None
-from core.game import Game
 from core.event_bus import GameEvents
-from core.state_manager import StateManager, GameState
+from core.gameplay import CollisionDirector
+from core.state_manager import GameState, StateManager
 from models.collision_system import CollisionResult
 
 pytestmark = pytest.mark.skipif(
@@ -19,72 +14,48 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-class FakeCfg:
-    class GameCfg:
-        lives = 3
-        fade_speed = 100.0
-
-    game = GameCfg()
-
-
-class FakeCollision:
-    def check(self, *args, **kwargs):
-        return CollisionResult()
-
-
 class FakeScore:
     def __init__(self):
         self.score = 0
+
     def add_points(self, pts=1):
         self.score += pts
 
 
 class FakeSounds:
-    def play_coin(self): pass
-    def play_win(self): pass
-    def play_music(self): pass
+    def __init__(self):
+        self.coin = 0
+        self.win = 0
+
+    def play_coin(self):
+        self.coin += 1
+
+    def play_win(self):
+        self.win += 1
 
 
 class FakeEventBus:
     def __init__(self):
         self.emitted = []
+
     def emit(self, event, *args, **kwargs):
         self.emitted.append(event)
 
 
 class FakePlayer:
     def __init__(self):
-        self.rect = None
         self.is_dead = False
+        self.rect = None   # rect нужен: process вызывает player.rect
+
     def die(self, launch_up=True):
         self.is_dead = True
 
+class FakeCollision:
+    def __init__(self, result=None):
+        self.result = result or CollisionResult()
 
-class FakeEnemy:
-    def __init__(self):
-        self.rect = None
-    def spawn_copy(self):
-        return self
-
-
-def make_game(**overrides):
-    g = object.__new__(Game)
-    g.config = overrides.get('config', FakeCfg())
-    g.event_bus = overrides.get('event_bus', FakeEventBus())
-    g.state = overrides.get('state', StateManager())
-    g.collision_system = overrides.get('collision', FakeCollision())
-    g.score_manager = overrides.get('score', FakeScore())
-    g.sounds = overrides.get('sounds', FakeSounds())
-    g.player = overrides.get('player', FakePlayer())
-    g.coins = overrides.get('coins', [])
-    g.coin_collected = overrides.get('coin_collected', [])
-    g.entities = overrides.get('entities', [])
-    g.level = overrides.get('level', None)
-    g.won = False
-    g.game_over = False
-    g.fade_level = 0
-    g.fade_direction = 0
-    return g
+    def check(self, *a, **k):
+        return self.result
 
 
 class FakeLevel:
@@ -92,132 +63,131 @@ class FakeLevel:
         self.flag_rect = flag_rect
 
 
-# --------------------------------------------------------------------------
-# _apply_collisions — монеты
-# --------------------------------------------------------------------------
+def make_director(result=None):
+    state = StateManager()
+    director = CollisionDirector(
+        collision_system=FakeCollision(result),
+        score_manager=FakeScore(),
+        event_bus=FakeEventBus(),
+        sounds=FakeSounds(),
+        state=state,
+    )
+    return director
+
+
 def test_coin_collection_marks_and_scores():
-    g = make_game()
-    g.coins = [object(), object()]            # 2 монеты
-    g.coin_collected = [False, False]
-    g.level = FakeLevel()
-
-    class CollThatHitsCoin0:
-        def check(self, *a, **k):
-            return CollisionResult(coin_index=0)
-
-    g.collision_system = CollThatHitsCoin0()
-    g._apply_collisions(0.016)
-    assert g.coin_collected[0] is True
-    assert g.score_manager.score == 1
-    assert GameEvents.COIN_COLLECTED in g.event_bus.emitted
+    director = make_director(CollisionResult(coin_index=0))
+    coins = [object(), object()]
+    coin_collected = [False, False]
+    director.process(FakePlayer(), coins, coin_collected, [], None)
+    assert coin_collected[0] is True
+    assert director.score_manager.score == 1
+    assert GameEvents.COIN_COLLECTED in director.event_bus.emitted
 
 
 def test_coin_collection_marks_only_that_coin():
-    g = make_game()
-    g.coins = [object(), object()]
-    g.coin_collected = [False, False]
-    g.level = FakeLevel()
-
-    class CollThatHitsCoin1:
-        def check(self, *a, **k):
-            return CollisionResult(coin_index=1)
-
-    g.collision_system = CollThatHitsCoin1()
-    g._apply_collisions(0.016)
-    assert g.coin_collected == [False, True]
+    director = make_director(CollisionResult(coin_index=1))
+    coins = [object(), object()]
+    coin_collected = [False, False]
+    director.process(FakePlayer(), coins, coin_collected, [], None)
+    assert coin_collected == [False, True]
 
 
-# --------------------------------------------------------------------------
-# _apply_collisions — враг
-# --------------------------------------------------------------------------
 def test_enemy_hit_kills_player():
-    g = make_game()
-    g.level = FakeLevel()
-    enemy = FakeEnemy()
-
-    class CollHitsEnemy:
-        def check(self, *a, **k):
-            return CollisionResult(hit_enemy=enemy)
-
-    g.collision_system = CollHitsEnemy()
-    g._apply_collisions(0.016)
-    assert g.player.is_dead is True
-    assert GameEvents.PLAYER_DIED in g.event_bus.emitted
+    director = make_director(CollisionResult(hit_enemy=object()))
+    player = FakePlayer()
+    director.process(player, [], [], [object()], None)
+    assert player.is_dead is True
+    assert GameEvents.PLAYER_DIED in director.event_bus.emitted
 
 
-# --------------------------------------------------------------------------
-# _apply_collisions — флаг (победа)
-# --------------------------------------------------------------------------
-def test_flag_hit_sets_won_and_state_won():
-    g = make_game()
-    g.level = FakeLevel()
-
-    class CollHitsFlag:
-        def check(self, *a, **k):
-            return CollisionResult(hit_flag=True)
-
-    g.collision_system = CollHitsFlag()
-    g._apply_collisions(0.016)
-    assert g.won is True
-    assert g.state.state is GameState.WON
-    assert GameEvents.LEVEL_WON in g.event_bus.emitted
+def test_flag_hit_sets_won_and_state():
+    director = make_director(CollisionResult(hit_flag=True))
+    director.process(FakePlayer(), [], [], [], object())
+    assert director.won is True
+    assert director.state.state is GameState.WON
+    assert GameEvents.LEVEL_WON in director.event_bus.emitted
 
 
-# --------------------------------------------------------------------------
-# _apply_collisions — падение
-# --------------------------------------------------------------------------
 def test_fell_out_kills_player():
-    g = make_game()
-    g.level = FakeLevel()
-
-    class CollFellOut:
-        def check(self, *a, **k):
-            return CollisionResult(fell_out=True)
-
-    g.collision_system = CollFellOut()
-    g._apply_collisions(0.016)
-    assert g.player.is_dead is True
-    assert GameEvents.PLAYER_DIED in g.event_bus.emitted
+    director = make_director(CollisionResult(fell_out=True))
+    player = FakePlayer()
+    director.process(player, [], [], [], None)
+    assert player.is_dead is True
+    assert GameEvents.PLAYER_DIED in director.event_bus.emitted
 
 
-# --------------------------------------------------------------------------
-# _apply_collisions — нет коллизий (ничего не происходит)
-# --------------------------------------------------------------------------
 def test_no_collisions_no_side_effects():
-    g = make_game()
-    g.coins = [object()]
-    g.coin_collected = [False]
-    g.level = FakeLevel()
-    g._apply_collisions(0.016)   # FakeCollision вернёт пустой CollisionResult
-    assert g.score_manager.score == 0
-    assert g.player.is_dead is False
-    assert g.won is False
-    assert g.event_bus.emitted == []
+    director = make_director()  # пустой CollisionResult
+    player = FakePlayer()
+    coins = [object()]
+    coin_collected = [False]
+    director.process(player, coins, coin_collected, [], None)
+    assert director.score_manager.score == 0
+    assert player.is_dead is False
+    assert director.won is False
+    assert director.event_bus.emitted == []
 
 
+def test_process_uses_collision_system_with_correct_args():
+    # Проверяем, что player исключается из списка врагов
+    called = {}
+
+    class RecordingCollision:
+        def check(self, player_rect, coins, coin_collected, enemies, flag_rect):
+            called['enemies'] = enemies
+            return CollisionResult()
+
+    player = FakePlayer()
+    director = CollisionDirector(
+        collision_system=RecordingCollision(),
+        score_manager=FakeScore(),
+        event_bus=FakeEventBus(),
+        sounds=FakeSounds(),
+        state=StateManager(),
+    )
+    enemy = object()
+    director.process(player, [], [], [player, enemy], None)
+    # player не передаётся как враг (исключается)
+    assert player not in called['enemies']
+    assert enemy in called['enemies']
+
 # --------------------------------------------------------------------------
-# _update_game_over_fade
+# Тесты на Game._update_game_over_fade (метод остался в Game)
 # --------------------------------------------------------------------------
-def test_game_over_fade_increases_up_to_255():
-    g = make_game()
+from core.game import Game
+
+
+def _make_game_fade():
+    g = object.__new__(Game)
     g.fade_direction = 1
     g.fade_level = 0
-    g._update_game_over_fade(1.0)          # speed=100 -> +100
+
+    class FakeCfg:
+        class GameCfg:
+            fade_speed = 100.0
+        game = GameCfg()
+    g.config = FakeCfg()
+    return g
+
+
+def test_game_over_fade_increases():
+    g = _make_game_fade()
+    g._update_game_over_fade(1.0)
     assert g.fade_level == pytest.approx(100.0)
 
 
-def test_game_over_fade_clamps_at_255_then_stops():
-    g = make_game()
-    g.fade_direction = 1
+def test_game_over_fade_clamps_at_255():
+    g = _make_game_fade()
     g.fade_level = 250
-    g._update_game_over_fade(1.0)          # 250 + 100 = 350 -> clamp 255
+    g._update_game_over_fade(1.0)
     assert g.fade_level == 255
-    assert g.fade_direction == 0           # останавливается
+    assert g.fade_direction == 0
 
 
 def test_game_over_fade_idle_when_direction_zero():
-    g = make_game()
+    g = _make_game_fade()
     g.fade_direction = 0
     g.fade_level = 50
     g._update_game_over_fade(1.0)
-    assert g.fade_level == 50              # не меняется
+    assert g.fade_level == 50
