@@ -9,129 +9,117 @@
 
 ## 1. Как пользоваться этим документом
 
-В новой сессии прочитайте разделы 1–9, приложите актуальный код проекта (или архив jumpgame.zip), и продолжайте по разделу 6 (текущая точка) и 7 (план на Фазу 3).
+В новой сессии прочитайте разделы 1–9, приложите актуальный код проекта (или архив jumpgame.zip), и продолжайте по разделу 6 (текущая точка) и 7 (план на Фазу 4).
 
 ---
 
 ## 2. Суть проекта
 
 Игрок прыгает по платформам, собирает монеты, избегает врагов, достигает флага. Построен на принципах SOLID, MVC, DI, EventBus (Observer), Data-Driven JSON-уровней.
-
-Слои: models/ (логика, физика, коллизии, состояния), views/ (отрисовка), controllers/ (ввод), core/ (оркестрация, события, конфиг, логгер, камера, сервисы), levels/ (загрузка уровней), audio/ (звук через EventBus), main.py (сборка через DI).
+Слои: models/, views/, controllers/, core/, levels/, audio/, main.py (сборка через DI).
 
 ---
 
-## 3. Фактическое состояние кода (итог аудита)
+## 3. Фактическое состояние кода
 
-Оценка ≈ 6,5/10 на момент исходного аудита. После Фаз 0–2 качество существенно выросло.
-
-- Game — God-Object (логика в _update/_apply_collisions). → декомпозиция в Фазе 3.
+Оценка соответствия плану заметно улучшилась после Фаз 0-3 (готовое ядро, декомпозиция Game начата).
+- Мёртвые модули enemy_controller.py, player_view.py, collision.py — удалены (Фаза 0).
+- Game декомпозирован: _apply_collisions вынесен в CollisionDirector; жизненный цикл уровня — в LevelFlow.
+- PhysicsComponent задокументирован через Protocols (PhysicsBody, PhysicsEngine).
 - Entity — 9 зарезервированных properties (x,y,width,height,left,top,right,bottom,centerx,centery) → pygame.Rect.
-- Мёртвые модули enemy_controller.py, player_view.py, collision.py → удалены в Фазе 0.
-- PhysicsComponent — конкретный класс, а не Protocol (фикс в Фазе 3).
-- Враг двигается через EnemyBehavior.update, float-источник pos_x/pos_y; apply_position/_float_x в коде НЕТ.
-- Конвенции имён: x/y/width/height/... зарезервированы за properties Entity. Границы зон — bound_left/bound_right. Соблюдать строго.
+- Враг двигается через EnemyBehavior.update, float-источник pos_x/pos_y.
+- Конвенции имён: x/y/... зарезервированы за properties Entity; границы зон — bound_left/bound_right. Соблюдать строго.
 
 ---
 
 ## 4. Завершённые фазы
 
 ### Фаза 0 «Санитизация» ✅
-Удалены мёртвые модули enemy_controller.py, player_view.py, collision.py. Из behaviors.py убран Animatable(Protocol); восстановлен импорт typing. py_compile: 38 файлов OK.
+Удалены мёртвые модули; из behaviors.py убран Animatable; py_compile 38 файлов OK.
 
 ### Фаза 1 «Инфраструктура качества» ✅
-pyproject.toml (pytest, ruff, coverage), requirements*.txt, .gitignore, Makefile, README_dev.md.
-.github/workflows/ci.yml — tests + lint(ruff) + coverage (push/PR, main/develop); headless pygame (SDL_VIDEODRIVER/SDL_AUDIODRIVER=dummy).
-.github/workflows/release.yml — PyInstaller one-file + GitHub Release на тег v*.
+pyproject.toml (pytest, ruff, coverage), ci.yml (tests+lint+format+coverage), release.yml (PyInstaller), Makefile, README_dev.
 
 ### Фаза 2 «Тестовый фундамент» ✅
-196 тестов, покрытие 81,7% по scope models+core+controllers+levels. fail_under=80 достигнут.
+196+ тестов, покрытие 81,7% по scope models+core+controllers+levels.
+views/ и audio/ временно исключены из порога покрытия (omit в [tool.coverage.run]);
+вернуть после стабилизации SOLID/MVC/OCP.
+ruff чист, формат применён.
 
-views/ и audio/ временно исключены из порога покрытия через omit в [tool.coverage.run]:
-    source = ["models","core","controllers","levels"]
-    branch = true
-    omit = ["views/*","audio/*"]
-Вернуть их после стабилизации архитектуры по SOLID/MVC/OCP.
-
-Покрыты: models/* (почти все 90-100%), core/* (config 95%, event_bus 95%, physics 95%, logger 93%, game_services 96%, camera/context/state_manager 100%), controllers/player_controller, levels/level_manager.
-core/game.py покрыт частично (~32%): _apply_collisions и _update_game_over_fade (через tests/test_game_flow.py с фейками).
-core/asset_loader.py слабо покрыт (~19%) — кандидат на добивку (входит в scope).
+### Фаза 3 «Декомпозиция Game» ✅
+- CollisionDirector (core/gameplay.py) — обработка коллизий в игровые правила (монета/враг/флаг/падение). DI через конструктор. Модуль `won` здесь.
+- LevelFlow (core/level_flow.py) — загрузка уровня и сборка мира (player, enemies spawn_copy, coins, платформы). DI через конструктор.
+- PhysicsComponent → Protocol (PhysicsBody + PhysicsEngine) в models/physics.py; типизирован в BaseCharacter.
+- Тесты: test_game_flow.py (CollisionDirector + fade Game), test_level_flow.py (сборка мира), test_physics.py (+ Protocols).
+- Ст177 тесты зелёные: 202 passed.
 
 ---
 
 ## 5. Созданные документы
 
-docs/ARCHITECTURE_PLAN.md — обновлённый план (v2.0, G–J, 4.5–4.8, риски 5–12)
-docs/AUDIT_REPORT.md — аудит (6,5/10)
-docs/ACTION_PLAN.md — план действий (Фазы 0–6)
-docs/SANITIZE_REPORT.md, docs/PHASE1_REPORT.md — отчёты Фаз 0–1
-docs/SESSION_CHECKPOINT.md — этот файл (точка возобновления)
+docs/ARCHITECTURE_PLAN.md, docs/AUDIT_REPORT.md, docs/ACTION_PLAN.md, docs/SANITIZE_REPORT.md, docs/PHASE1_REPORT.md, docs/PHASE3_PLAN.md, docs/DIP.md (схема зависимостей), docs/SESSION_CHECKPOINT.md (этот файл).
 
 ---
 
 ## 6. ТЕКУЩАЯ ТОЧКА (НЕ ПОТЕРЯТЬ!)
 
 ### Что уже сделано
-Фазы 0, 1, 2 завершены. 196 тестов зелёные, покрытие 81,7% (>=80), coverage-порог CI достигнут.
+Фазы 0, 1, 2, 3 завершены. 202 теста зелёные, покрытие 81,7%, ruff чист, CI зелёный.
 
-### НЕРЕШЁННАЯ ЗАДАЧА — LINT (ruff) падает: 112 ошибок
-Большинство ошибок — в тестах Фазы 2: F401 (неиспользуемые импорты), I001 (порядок импортов), E402 (импорты не наверху — из-за паттерна import importlib.util + pytestmark + import pygame # noqa: E402), E501 (длинные строки).
-
-Быстрое решение для зелёного CI — временный per-file-ignore в pyproject.toml:
-    [tool.ruff.lint.per-file-ignores]
-    "tests/*" = ["E402", "F401", "I001", "E501"]
-Рекомендуется не оставлять навсегда — точечно почистить тесты.
+### Нерешённые текущие задачи (если есть)
+- (сверить) покрытие могло чуть измениться после добавления nouveaux тестов CollisionDirector/LevelFlow/Protocol. Если coverage упал ниже 80% — добавить добивок (enemy_behavior хвосты, player хвосты, asset_loader).
+- Вернуть views/ и audio/ к покрытию — запланировано ПОЗЖЕ (после стабилизации SOLID/MVC/OCP).
 
 ### Следующий практический шаг
-1. python -m pytest tests/ -q (должно быть 196 passed)
-2. ruff check . (посмотреть ошибки)
-3. ruff format --check .
-4. Исправить errors в tests/ (или временный per-file-ignore).
-5. Добить core/asset_loader.py (опционально).
-6. git add + commit + push → проверка CI (tests + lint + coverage 80%).
+1. python -m pytest tests/ -q (202 passed).
+2. ruff check . ; ruff format --check . (оба чистые).
+3. Проверить coverage: python -m pytest tests/ --cov --cov-report=term-missing (порог 80%).
+4. git commit + push (если были изменения), проверить CI.
 
 ---
 
-## 7. План на Фазу 3 «Декомпозиция Game» (после чистки ruff)
+## 7. План на Фазу 4 «Refactoring геометрии и отказ от pygame.Rect» (после фиксации)
 
-Разделы плана: 4.2 / 4.3 / 4.6 / 4.8.
+Разделы плана: 4.5 && 4.1.
 
-1. Вынести _apply_collisions из core/game.py → CollisionDirector / GameplayService.
-2. Перенести тесты из tests/test_game_flow.py на новый класс (страховочная сетка уже есть).
-3. Жизненный цикл уровня → LevelFlow.
-4. PhysicsComponent → Protocol (задокументировать контракт apply/update_grounded и поля entity).
-5. DIP-схема — задокументировать направления зависимостей (модель не зависит от view; controller от событий; view через DTO).
+1. Прочистка Entity (4.5): вынести геометрию в отдельный объект Geometry/RectPosition (без pygame);
+   Entity хранит внутренний rect, метод to_pygame_rect() для View/рендера.
+2. Отказ от pygame.Rect в моделях (4.1): собственный dataclass RectPosition в core/geometry.py.
+   -> Трогает: PhysicsComponent, CollisionSystem, Renderer/CharacterView, Camera, Game.
+   -> Отдельная итерация + юнит-тесты геометрии и коллизий.
+3. Сохранить контракты (physics пишет в rect / владелец float-источника не в цикле физики).
 
-Ключевые файлы: core/game.py, models/collision_system.py, models/physics.py, core/game_services.py, tests/test_game_flow.py.
+### После Фазы 4 (по приоритету плана)
+- Фаза 5 «Data-Driven расширение»: враги-поведения в2/в3/в4, платформы-типы (C), стабилизация JSON (I1).
+- Фаза 6 «Продуктовые фичи»: герои (B), Theme/Skin (D+J1), редактор (E), разрушаемые блоки (F).
+- Вернуть views/audio к покрытию.
 
 ---
 
 ## 8. Команды для старта
 
     python -m pytest tests/ -q
-    python -m pytest tests/ --cov --cov-report=term-missing   # coverage по scope
+    python -m pytest tests/ --cov --cov-report=term-missing   # coverage
     ruff check .
     ruff format --check .
-    grep -rn "import settings\|global \|_instance" --include="*.py" .   # глобалы/синглтоны
+    ruff format .   # если нужна автоправка формата
+    grep -rn "import settings\|global \|_instance" --include="*.py" .   # глобалы
 
 ---
 
 ## 9. Известные риски / тертости
 
-- Game God-Object — цель Фазы 3; тестировать после выделения CollisionDirector.
-- core/asset_loader.py слабо покрыт (~19%), входит в scope.
-- views/ и audio/ временно вне порога покрытия; вернуть после стабилизации SOLID/MVC/OCP.
-- ruff — 112 ошибок, большая часть в tests/; не заглушать навсегда.
-- Конвенции имён — соблюдать строго.
+- Отказ от pygame.Rect (Фаза 4) — главный блокер масштабирования; требует аккуратной итерации и тестов.
+- views/ и audio/ пока вне порога покрытия.
+- Конвенции имён соблюдать строго (иначе баги физики).
 
 ---
 
 ## 10. Старт новой сессии (чек-лист)
 
-1. Получить код проекта (рабочий каталог или архив).
-2. Прочитать SESSION_CHECKPOINT.md.
-3. Свериться: python -m pytest tests/ -q и ruff check .
-4. Починить ruff (tests/) или временно per-file-ignore; commit + push; проверить CI.
-5. Добить core/asset_loader.py (опционально).
-6. Перейти к Фазе 3: вынести _apply_collisions → CollisionDirector, перенести тесты; LevelFlow; PhysicsComponent → Protocol; DIP.
-7. Обновлять этот файл по мере выполнения фаз.
+1. Прочитать SESSION_CHECKPOINT.md.
+2. Приложить актуальный код / архив.
+3. Свериться: pytest (202), ruff (чисто), coverage (80%).
+4. Продолжить Фазу 4 (геометрия/отказ от pygame.Rect) по шагам из раздела 7.
+5. После Фазы 4 — вернуть views/audio к покрытию и/или Фазы 5-6.
+6. Обновлять этот файл по мере выполнения.
