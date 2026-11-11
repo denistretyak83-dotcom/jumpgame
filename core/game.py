@@ -14,6 +14,7 @@ from core.context import GameContext
 from core.event_bus import EventBus, GameEvents
 from core.game_services import LifeManager, RespawnService, ScoreManager
 from core.gameplay import CollisionDirector
+from core.level_flow import LevelFlow
 from core.logger import GameLogger
 from core.state_manager import GameState, StateManager
 from levels.level_manager import LevelManager
@@ -99,6 +100,16 @@ class Game:
         self.level_manager = LevelManager(
             self.root,
             entity_factories=self.world_factory.entity_factories(),
+        )
+
+        # --- Level Flow (декомпозиция игры, Фаза 3) ---
+        self.level_flow = LevelFlow(
+            level_manager=self.level_manager,
+            world_factory=self.world_factory,
+            event_bus=self.event_bus,
+            renderer=self.renderer,
+            camera=self.camera,
+            sounds=self.sounds,
         )
 
         # --- Game State Vars ---
@@ -261,26 +272,16 @@ class Game:
         self.fade_level = 0
         self.fade_direction = 0
         self.won = False
-        self.collision_director.won = False
         self.game_over = False
+        self.collision_director.won = False
         self.state.set(GameState.PLAYING)
 
-        level_data = self.level_manager.load_level("level_1")
-        self.level = level_data
-        self.renderer.set_platforms(level_data.platforms)
+        # Жизненный цикл уровня делегируется LevelFlow (Фаза 3)
+        self.level_flow.load_and_setup("level_1")
 
-        spawn_point = self.level.player_spawn
-
-        # 1) Явно создаём игрока ДО построения списка
-        self.player = self.world_factory.create_player(
-            spawn_point[0], spawn_point[1], self.event_bus
-        )
-
-        # 2) Список сущностей: [реальный игрок] + враги
-        self.entities = [self.player] + [e.spawn_copy() for e in level_data.enemies]
-
-        self.coins = [r.copy() for r in level_data.coins]
-        self.coin_collected = [False] * len(self.coins)
-
-        self.camera.update(self.player.rect.x)
-        self.sounds.play_music()
+        # Забираем построенный мир из LevelFlow
+        self.level = self.level_flow.level
+        self.player = self.level_flow.player
+        self.entities = self.level_flow.entities
+        self.coins = self.level_flow.coins
+        self.coin_collected = self.level_flow.coin_collected
