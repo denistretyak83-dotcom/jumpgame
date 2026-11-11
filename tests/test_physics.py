@@ -1,17 +1,11 @@
-"""Тесты PhysicsComponent: гравитация, clamp max_fall, коллизии, grounded."""
-import importlib.util
+"""Тесты PhysicsComponent: гравитация, clamp max_fall, коллизии, grounded.
 
+Фаза 4: модели работают с core.geometry.RectPosition (без pygame).
+"""
 import pytest
 
-# Всё содержимое наполняется через реальный pygame.Rect (headless-режим).
-# Если pygame недоступен в окружении — тесты пропускаются.
-pygame_available = importlib.util.find_spec("pygame") is not None
-
+from core.geometry import RectPosition
 from models.physics import PhysicsComponent, PhysicsParams  # noqa: E402
-
-pytestmark = pytest.mark.skipif(
-    not pygame_available, reason="pygame недоступен (нужен для pygame.Rect)"
-)
 
 
 # --------------------------------------------------------------------------
@@ -19,9 +13,7 @@ pytestmark = pytest.mark.skipif(
 # --------------------------------------------------------------------------
 class FakeOwner:
     def __init__(self, x=0, y=0, w=32, h=48, vel_x=0.0, vel_y=0.0):
-        import pygame
-
-        self.rect = pygame.Rect(x, y, w, h)
+        self.rect = RectPosition(int(x), int(y), int(w), int(h))
         self.vel_x = vel_x
         self.vel_y = vel_y
         self.on_ground = False
@@ -120,7 +112,7 @@ def test_apply_lands_on_platform_top():
     pc = PhysicsComponent()
     dt = 1 / 60
     owner = FakeOwner(x=0, y=100, w=32, h=48, vel_y=0.0)
-    platform = pygame.Rect(0, 200, 200, 20)
+    platform = RectPosition(0, 200, 200, 20)
     for _ in range(120):
         pc.apply(owner, dt, [platform])
         if owner.on_ground:
@@ -138,7 +130,7 @@ def test_apply_reports_head_bump():
     dt = 1 / 60
     # Игрок прыгает вверх, над ним платформа-потолок
     owner = FakeOwner(x=0, y=300, w=32, h=48, vel_x=0.0, vel_y=-1500.0)
-    platform = pygame.Rect(0, 220, 200, 20)  # потолок
+    platform = RectPosition(0, 220, 200, 20)  # потолок
     bumped = False
     for _ in range(60):
         result = pc.apply(owner, dt, [platform])
@@ -167,8 +159,8 @@ def test_apply_stops_at_wall_from_left():
     dt = 1 / 60
     # Игрок стоит на "полу" (чтобы не упасть) и идёт вправо в стену
     owner = FakeOwner(x=0, y=200, w=32, h=48, vel_x=200.0, vel_y=0.0)
-    floor = pygame.Rect(0, 300, 500, 20)
-    wall = pygame.Rect(250, 0, 20, 300)  # стена справа перед игроком
+    floor = RectPosition(0, 300, 500, 20)
+    wall = RectPosition(250, 0, 20, 300)  # стена справа перед игроком
     for _ in range(120):
         pc.apply(owner, dt, [floor, wall])
     # правый край игрока упёрся в левый край стены
@@ -182,8 +174,8 @@ def test_apply_stops_at_wall_from_right():
     dt = 1 / 60
     # Игрок на полу идёт влево в стену
     owner = FakeOwner(x=500, y=200, w=32, h=48, vel_x=-200.0, vel_y=0.0)
-    floor = pygame.Rect(0, 300, 700, 20)
-    wall = pygame.Rect(250, 0, 20, 300)  # стена слева
+    floor = RectPosition(0, 300, 700, 20)
+    wall = RectPosition(250, 0, 20, 300)  # стена слева
     for _ in range(120):
         pc.apply(owner, dt, [floor, wall])
     assert owner.rect.left == wall.right
@@ -197,7 +189,7 @@ def test_update_grounded_true_when_on_platform():
 
     pc = PhysicsComponent()
     owner = FakeOwner(x=0, y=52, w=32, h=48, vel_y=0.0)  # bottom=100
-    platform = pygame.Rect(0, 100, 200, 20)
+    platform = RectPosition(0, 100, 200, 20)
     pc.update_grounded(owner, platforms=[platform])
     assert owner.on_ground is True
 
@@ -207,7 +199,7 @@ def test_update_grounded_false_when_above():
 
     pc = PhysicsComponent()
     owner = FakeOwner(x=0, y=40, w=32, h=48, vel_y=0.0)  # bottom=88
-    platform = pygame.Rect(0, 100, 200, 20)
+    platform = RectPosition(0, 100, 200, 20)
     pc.update_grounded(owner, platforms=[platform])
     assert owner.on_ground is False
 
@@ -218,7 +210,7 @@ def test_update_grounded_false_when_below_tolerance():
     pc = PhysicsComponent(PhysicsParams(ground_tolerance=8.0))
     # bottom=150 — далеко под верхушкой платформы (100) — не grounded
     owner = FakeOwner(x=0, y=102, w=32, h=48, vel_y=0.0)
-    platform = pygame.Rect(0, 100, 200, 20)
+    platform = RectPosition(0, 100, 200, 20)
     pc.update_grounded(owner, platforms=[platform])
     assert owner.on_ground is False
 

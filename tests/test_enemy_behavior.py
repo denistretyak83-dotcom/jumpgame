@@ -1,14 +1,11 @@
 """Тесты EnemyBehavior: реестр (OCP) и поведения walker/chaser/flyer.
 
 Используется фейковый враг, имитирующий API, который потребляет поведение:
-pos_x, pos_y, vel_x, bound_left, bound_right, rect (pygame.Rect).
+pos_x, pos_y, vel_x, bound_left, bound_right, rect (core.geometry.RectPosition).
 """
-import importlib.util
-
 import pytest
 
-pygame_available = importlib.util.find_spec("pygame") is not None
-
+from core.geometry import RectPosition
 from models.enemy_behavior import (  # noqa: E402
     DEFAULT_BEHAVIOR_REGISTRY,
     EnemyBehaviorRegistry,
@@ -17,21 +14,14 @@ from models.enemy_behavior import (  # noqa: E402
     FlyerBehavior,
 )
 
-pytestmark = pytest.mark.skipif(
-    not pygame_available, reason="pygame недоступен (нужен pygame.Rect)"
-)
-
 
 class FakeEnemy:
     """Минимальный враг, достаточный для поведения."""
 
     def __init__(self, x=0, y=0, w=32, h=48, speed=10.0,
                  bound_left=0, bound_right=300):
-        import pygame
-
-        self.rect = pygame.Rect(x, y, w, h)
-        self.width = w
-        self.width = w
+        self.rect = RectPosition(int(x), int(y), int(w), int(h))
+        self.width = int(w)
         self.pos_x = float(x)
         self.pos_y = float(y)
         self.vel_x = speed
@@ -161,7 +151,5 @@ def test_flyer_syncs_rect_position():
     b = FlyerBehavior(amplitude=30, frequency=1.0)
     b.attach(e)
     b.update(e, dt=0.25)
-    import pygame
-
     assert e.rect.x == int(round(e.pos_x))
     assert e.rect.y == int(round(e.pos_y))

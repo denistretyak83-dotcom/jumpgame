@@ -1,19 +1,10 @@
 """Тесты Entity: инкапсуляция 9-ти properties и синхронизация с внутренним rect.
 
-Свойства делегируют в pygame.Rect (см. models.entity). Семантика сеттеров —
-стандартная pygame: right/bottom/center двигают позицию, сохраняя размер.
+Фаза 4: Entity работает на core.geometry.RectPosition (без pygame).
+Свойства делегируют в RectPosition (см. models.entity). Семантика сеттеров —
+совместима с pygame: right/bottom/center двигают позицию, сохраняя размер.
 """
-import importlib.util
-
-import pytest
-
-pygame_available = importlib.util.find_spec("pygame") is not None
-
 from models.entity import Entity  # noqa: E402
-
-pytestmark = pytest.mark.skipif(
-    not pygame_available, reason="pygame недоступен (нужен pygame.Rect)"
-)
 
 
 def test_entity_initializes_rect():

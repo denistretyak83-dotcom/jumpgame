@@ -12,9 +12,8 @@
 from collections.abc import Callable
 from typing import Any
 
-import pygame
-
 from core.config import Settings
+from core.geometry import RectPosition
 from models.enemy import Enemy
 from models.enemy_behavior import (
     ChaserBehavior,
@@ -87,8 +86,8 @@ class WorldFactory:
         self.register("flag", lambda d: self._build_rect(d, name="flag"))
         self.register("enemy", lambda d: self.create_enemy(d))
 
-    def _build_rect(self, data: dict, name: str) -> pygame.Rect:
-        """Построить pygame.Rect из пагины уровня с валидацией ключей."""
+    def _build_rect(self, data: dict, name: str) -> RectPosition:
+        """Построить RectPosition из пагины уровня с валидацией ключей."""
         try:
             x = int(data["x"])
             y = int(data["y"])
@@ -99,7 +98,7 @@ class WorldFactory:
                 f"{name}: отсутствуют/невалидны ключи прямоугольника "
                 f"(нужны x,y,w,h как числа), получено: {data}"
             ) from exc
-        return pygame.Rect(x, y, w, h)
+        return RectPosition(x, y, w, h)
 
     # ------------------------------------------------------------------
     # Фабрики конкретных моделей

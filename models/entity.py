@@ -1,27 +1,29 @@
 """Entity -- базовая модель с консервативной инкапсуляцией позиции/размеров.
 
 Свойства x, y, width, height, left, top, right, bottom, centerx, centery
-делегируют во внутренний pygame.Rect (сам rect сохранён для коллизий/рендера).
-Полный отказ от pygame.Rect в моделях — отдельный радикальный план.
+делегируют во внутренний RectPosition (core.geometry) — БЕЗ pygame.
+View/рендер получает pygame.Rect по требованию через to_pygame_rect().
 
 КОНВЕНЦИЯ ИМЁН (обязательна для наследников):
     Имена x/y/width/height/left/top/right/bottom/centerx/centery ЗАРЕЗЕРВИРОВАНЫ
-    за делегированием во внутренний pygame.Rect (this.rect). Запрещается
+    за делегированием во внутренний rect (this.rect). Запрещается
     использовать эти имена как СОБСТВЕННЫЕ ПОЛЯ сущности с другой семантикой.
     Примеры корректных альтернатив:
       - границы патруля/зоны врага:  bound_left / bound_right (или patrol_*)
       - верхняя/нижняя граница зоны: bound_top / bound_bottom
     Нарушение конвенции (self.left = ... как поле-граница) вызывает конфликт
-    со свойствами и приводит к некорректному поведению (см. bacг Enemy с
+    со свойствами и приводит к некорректному поведению (см. баг Enemy с
     "дёргающимися" врагами, исправлен переводом на bound_left/bound_right).
 """
 
-import pygame
+from core.geometry import RectPosition
 
 
 class Entity:
     def __init__(self, x, y, width, height):
-        self.rect = pygame.Rect(x, y, width, height)
+        width = int(width)
+        height = int(height)
+        self.rect = RectPosition(int(x), int(y), width, height)
 
     @property
     def x(self):
@@ -102,3 +104,7 @@ class Entity:
     @centery.setter
     def centery(self, v):
         self.rect.centery = v
+
+    def to_pygame_rect(self):
+        """pygame.Rect по требованию для View/рендера (не в моделях)."""
+        return self.rect.to_pygame_rect()

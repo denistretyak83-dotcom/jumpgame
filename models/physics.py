@@ -4,6 +4,9 @@
 Любая сущность может подключить физику, передав себя в apply().
 Отвязан от конкретного класса: работает с entity.rect/vel_x/vel_y.
 
+Фаза 4 (4.1): модели работают с core.geometry.RectPosition вместо pygame.Rect.
+Физика пишет в entity.rect (RectPosition); сам rect больше НЕ pygame.Rect.
+
 Внимание (п.7 мемо): локальный dataclass переименован из PhysicsConfig в
 PhysicsParams, чтобы устранить дубль имени с официальным
 core.config.PhysicsConfig (публичный конфиг из settings.json).
@@ -12,7 +15,7 @@ core.config.PhysicsConfig (публичный конфиг из settings.json).
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-import pygame
+from core.geometry import RectPosition
 
 
 @runtime_checkable
@@ -23,7 +26,7 @@ class PhysicsBody(Protocol):
     интерфейсом, а не с конкретным классом (Player/Enemy/BaseCharacter).
     """
 
-    rect: pygame.Rect
+    rect: RectPosition
     vel_x: float
     vel_y: float
     on_ground: bool
@@ -103,7 +106,7 @@ class PhysicsComponent:
 
         entity.rect.y += int(entity.vel_y * dt)
         for p in platforms:
-            if entity.rect.colliderect(p):
+            if entity.rect.intersects(p):
                 if entity.vel_y > 0.5 and entity.rect.top < p.top:
                     entity.rect.bottom = p.top
                     entity.vel_y = 0
@@ -115,7 +118,7 @@ class PhysicsComponent:
 
         entity.rect.x += int(entity.vel_x * dt)
         for p in platforms:
-            if entity.rect.colliderect(p):
+            if entity.rect.intersects(p):
                 if entity.vel_x > 0:
                     entity.rect.right = p.left
                 elif entity.vel_x < 0:

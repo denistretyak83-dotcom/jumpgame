@@ -108,9 +108,10 @@ class Renderer:
         # 3. МОНЕТЫ
         for i, coin in enumerate(coins):
             if not coin_collected[i]:
-                pygame.draw.ellipse(screen, (180, 130, 0), coin.inflate(2, 2))
-                pygame.draw.ellipse(screen, (255, 220, 0), coin)
-                pygame.draw.ellipse(screen, (255, 245, 120), coin.inflate(-8, -8))
+                coin_rect = coin.to_pygame_rect()  # RectPosition -> pygame.Rect (для View)
+                pygame.draw.ellipse(screen, (180, 130, 0), coin_rect.inflate(2, 2))
+                pygame.draw.ellipse(screen, (255, 220, 0), coin_rect)
+                pygame.draw.ellipse(screen, (255, 245, 120), coin_rect.inflate(-8, -8))
 
         # 4. СУЩНОСТИ (игрок + враги)
         if not won:

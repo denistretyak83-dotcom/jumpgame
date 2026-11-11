@@ -11,14 +11,14 @@ CollisionResult БЕЗ мутаций игры. Игровые правила о
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
-import pygame
+from core.geometry import RectPosition
 
 
 @runtime_checkable
 class Collidable(Protocol):
     """Что нужно сущности, чтобы участвовать в коллизиях."""
 
-    rect: pygame.Rect
+    rect: RectPosition
 
 
 @dataclass
@@ -44,29 +44,29 @@ class CollisionSystem:
 
     def check(
         self,
-        player_rect: pygame.Rect,
-        coins: list[pygame.Rect],
+        player_rect: RectPosition,
+        coins: list[RectPosition],
         coin_collected: list[bool],
         enemies: list[Collidable],
-        flag_rect: pygame.Rect | None,
+        flag_rect: RectPosition | None,
     ) -> CollisionResult:
         """Один проход: монеты -> враг -> флаг -> падение."""
         result = CollisionResult()
 
         # 1. Монеты — первая попавшаяся неподобранная
         for i, coin in enumerate(coins):
-            if not coin_collected[i] and player_rect.colliderect(coin):
+            if not coin_collected[i] and player_rect.intersects(coin):
                 result.coin_index = i
                 break
 
         # 2. Враг — первое пересечение (у врагов есть .rect -> Collidable)
         for enemy in enemies:
-            if player_rect.colliderect(enemy.rect):
+            if player_rect.intersects(enemy.rect):
                 result.hit_enemy = enemy
                 break
 
         # 3. Флаг
-        if flag_rect is not None and player_rect.colliderect(flag_rect):
+        if flag_rect is not None and player_rect.intersects(flag_rect):
             result.hit_flag = True
 
         # 4. Падение за нижний край экрана (+буфер)

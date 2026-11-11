@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-import pygame
+from core.geometry import RectPosition
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,10 @@ class LevelData:
     name: str
     next_level: str | None
     player_spawn: tuple[float, float]
-    platforms: list[pygame.Rect]
-    coins: list[pygame.Rect]
+    platforms: list[RectPosition]
+    coins: list[RectPosition]
     enemies: list[Any]
-    flag_rect: pygame.Rect
+    flag_rect: RectPosition
 
 
 class LevelBuilder:

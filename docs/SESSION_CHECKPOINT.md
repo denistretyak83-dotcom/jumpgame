@@ -9,7 +9,7 @@
 
 ## 1. Как пользоваться этим документом
 
-В новой сессии прочитайте разделы 1–9, приложите актуальный код проекта (или архив jumpgame.zip), и продолжайте по разделу 6 (текущая точка) и 7 (план на Фазу 4).
+В новой сессии прочитайте разделы 1–9, приложите актуальный код проекта (или архив jumpgame-phase4.zip), и продолжайте по разделу 6 (текущая точка) и 7 (план на Фазу 5).
 
 ---
 
@@ -26,7 +26,7 @@
 - Мёртвые модули enemy_controller.py, player_view.py, collision.py — удалены (Фаза 0).
 - Game декомпозирован: _apply_collisions вынесен в CollisionDirector; жизненный цикл уровня — в LevelFlow.
 - PhysicsComponent задокументирован через Protocols (PhysicsBody, PhysicsEngine).
-- Entity — 9 зарезервированных properties (x,y,width,height,left,top,right,bottom,centerx,centery) → pygame.Rect.
+- Entity — 9 зарезервированных properties (x,y,width,height,left,top,right,bottom,centerx,centery) → core.geometry.RectPosition (без pygame). to_pygame_rect() для View.
 - Враг двигается через EnemyBehavior.update, float-источник pos_x/pos_y.
 - Конвенции имён: x/y/... зарезервированы за properties Entity; границы зон — bound_left/bound_right. Соблюдать строго.
 
@@ -53,6 +53,16 @@ ruff чист, формат применён.
 - Тесты: test_game_flow.py (CollisionDirector + fade Game), test_level_flow.py (сборка мира), test_physics.py (+ Protocols).
 - Ст177 тесты зелёные: 202 passed.
 
+### Фаза 4 «Отказ от pygame.Rect + прочистка геометрии» ✅ (226 тестов, покрытие 82,8%)
+- **4.5 — Entity:** `models/entity.py` переведён на `core.geometry.RectPosition` (без pygame); убран `import pygame`; добавлен `to_pygame_rect()`; 9 properties сохранены (публичный контракт не изменён).
+- **4.1 — геометрия в моделях:** `core/geometry.py` `RectPosition` дополнен сеттерами `left/top/right/bottom/centerx/centery`, `colliderect()` (алиас `intersects()`), `move()`, `move_ip()`.
+- `models/physics.py`: `PhysicsBody.rect -> RectPosition`; `colliderect` → `intersects()`; контракт сохранён (physics пишет в rect / float-источник вне цикла).
+- `models/collision_system.py`: `Collidable.rect -> RectPosition`; `check()` на RectPosition.
+- `models/factory.py` `_build_rect()` и `levels/level_manager.py` типы → RectPosition.
+- `core/game.py` / `core/level_flow.py` / `core/gameplay.py`: работают через `player.rect` (свойства сохранены).
+- View (`views/*`) остались на pygame.Rect (строят из DTO / `to_pygame_rect()`) — корректно по DIP.
+- Тесты переведены на RectPosition: test_entity.py, test_physics.py, test_collision_system.py, test_enemy_behavior.py; test_geometry.py расширен (bounds, edge-пересечения, negative coords, float).
+
 ---
 
 ## 5. Созданные документы
@@ -64,33 +74,31 @@ docs/ARCHITECTURE_PLAN.md, docs/AUDIT_REPORT.md, docs/ACTION_PLAN.md, docs/SANIT
 ## 6. ТЕКУЩАЯ ТОЧКА (НЕ ПОТЕРЯТЬ!)
 
 ### Что уже сделано
-Фазы 0, 1, 2, 3 завершены. 202 теста зелёные, покрытие 81,7%, ruff чист, CI зелёный.
+Фазы 0, 1, 2, 3, 4 завершены. 226 тестов зелёные, покрытие 82,8%, ruff clean, format clean, CI зелёный.
 
 ### Нерешённые текущие задачи (если есть)
-- (сверить) покрытие могло чуть измениться после добавления nouveaux тестов CollisionDirector/LevelFlow/Protocol. Если coverage упал ниже 80% — добавить добивок (enemy_behavior хвосты, player хвосты, asset_loader).
 - Вернуть views/ и audio/ к покрытию — запланировано ПОЗЖЕ (после стабилизации SOLID/MVC/OCP).
 
 ### Следующий практический шаг
-1. python -m pytest tests/ -q (202 passed).
+1. python -m pytest tests/ -q (226 passed).
 2. ruff check . ; ruff format --check . (оба чистые).
 3. Проверить coverage: python -m pytest tests/ --cov --cov-report=term-missing (порог 80%).
-4. git commit + push (если были изменения), проверить CI.
+4. Перейти к Фазе 5 «Data-Driven расширение» (см. ACTION_PLAN).
+5. git commit + push (если были изменения), проверить CI.
 
 ---
 
-## 7. План на Фазу 4 «Refactoring геометрии и отказ от pygame.Rect» (после фиксации)
+## 7. План на Фазу 5 «Data-Driven расширение» (после фиксации Фазы 4)
 
-Разделы плана: 4.5 && 4.1.
+Фаза 4 (геометрия/отказ от pygame.Rect) — ВЫПОЛНЕНА. Разделы плана: B/C/I1/J2.
 
-1. Прочистка Entity (4.5): вынести геометрию в отдельный объект Geometry/RectPosition (без pygame);
-   Entity хранит внутренний rect, метод to_pygame_rect() для View/рендера.
-2. Отказ от pygame.Rect в моделях (4.1): собственный dataclass RectPosition в core/geometry.py.
-   -> Трогает: PhysicsComponent, CollisionSystem, Renderer/CharacterView, Camera, Game.
-   -> Отдельная итерация + юнит-тесты геометрии и коллизий.
-3. Сохранить контракты (physics пишет в rect / владелец float-источника не в цикле физики).
+1. Враги в2: поведение по типу (уже есть реестр behaviors walker/chaser/flyer) — расширение вариантов.
+2. Враги в3: View по типу/размеру (через DTO).
+3. Враги в4: физика/летающие (Flyer есть).
+4. Платформы-типы (C): `_build_rect` → типизированные платформы через WorldFactory (OCP).
+5. Стабилизация JSON-схемы (I1 + мигратор); каталог уровней (J2).
 
-### После Фазы 4 (по приоритету плана)
-- Фаза 5 «Data-Driven расширение»: враги-поведения в2/в3/в4, платформы-типы (C), стабилизация JSON (I1).
+### После Фазы 5 (по приоритету плана)
 - Фаза 6 «Продуктовые фичи»: герои (B), Theme/Skin (D+J1), редактор (E), разрушаемые блоки (F).
 - Вернуть views/audio к покрытию.
 
@@ -109,17 +117,18 @@ docs/ARCHITECTURE_PLAN.md, docs/AUDIT_REPORT.md, docs/ACTION_PLAN.md, docs/SANIT
 
 ## 9. Известные риски / тертости
 
-- Отказ от pygame.Rect (Фаза 4) — главный блокер масштабирования; требует аккуратной итерации и тестов.
-- views/ и audio/ пока вне порога покрытия.
-- Конвенции имён соблюдать строго (иначе баги физики).
+- Отказ от pygame.Rect (Фаза 4) ВЫПОЛНЕН: модели теперь pygame-независимы (RectPosition). Это снимает главный блокер масштабирования.
+- views/ и audio/ пока вне порога покрытия (возврат после стабилизации SOLID/MVC/OCP).
+- Конвенции имён соблюдать строго (иначе баги физики): x/y/... зарезервированы за rect-делегированием.
+- Float vs int: RectPosition хранит float; при записи в rect в физике/поведениях сохранён int(round(...)) — иначе дёргания.
 
 ---
 
 ## 10. Старт новой сессии (чек-лист)
 
 1. Прочитать SESSION_CHECKPOINT.md.
-2. Приложить актуальный код / архив.
-3. Свериться: pytest (202), ruff (чисто), coverage (80%).
-4. Продолжить Фазу 4 (геометрия/отказ от pygame.Rect) по шагам из раздела 7.
-5. После Фазы 4 — вернуть views/audio к покрытию и/или Фазы 5-6.
+2. Приложить актуальный код / архив (jumpgame-phase4.zip).
+3. Свериться: pytest (226), ruff (чисто), coverage (82,8%).
+4. Продолжить Фазу 5 (Data-Driven расширение) по разделу 7.
+5. Позже — вернуть views/audio к покрытию и Фаза 6.
 6. Обновлять этот файл по мере выполнения.
