@@ -4,7 +4,7 @@ import pygame
 
 from views.background import RetroBackground
 from views.hud import draw_pixelated_fade, draw_retro_hud
-from views.tiles import RetroTiles
+from views.tiles import RetroTiles, TileFactory
 
 
 class Renderer:
@@ -36,11 +36,23 @@ class Renderer:
         self._view_registry[entity_cls] = view_factory
 
     # --- хелперы платформ ---
-    def _platform_surface(self, width, height):
-        key = (width, height)
+    def _platform_surface(self, width, height, style="grass_top"):
+        key = (width, height, style)
         if key not in self._platform_surfaces:
-            self._platform_surfaces[key] = self.tiles.grass_top(width, height)
+            self._platform_surfaces[key] = self._make_tile(style, width, height)
         return self._platform_surfaces[key]
+
+    @staticmethod
+    def _make_tile(style, width, height):
+        """OCP: выбирает генератор плитки по стилю (views.tiles)."""
+        if style == "floating":
+            return RetroTiles.floating_platform(width, height)
+        if style == "brick":
+            return TileFactory.brick_tile(width, height)
+        if style == "grass_top_tile":
+            return TileFactory.grass_top_tile(width, height)
+        # default style ("grass_top") + fallback
+        return RetroTiles.grass_top(width, height)
 
     def set_platforms(self, platforms):
         self.current_platforms = platforms
@@ -102,7 +114,8 @@ class Renderer:
         # 2. ПЛАТФОРМЫ
         if self.current_platforms:
             for p in self.current_platforms:
-                surf = self._platform_surface(p.width, p.height)
+                style = getattr(p, "tile_style", "grass_top")
+                surf = self._platform_surface(p.width, p.height, style)
                 screen.blit(surf, (p.x, p.y))
 
         # 3. МОНЕТЫ

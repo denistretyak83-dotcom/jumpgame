@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.geometry import RectPosition
+from models.platform import Platform
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class LevelData:
     name: str
     next_level: str | None
     player_spawn: tuple[float, float]
-    platforms: list[RectPosition]
+    platforms: list[Platform]
     coins: list[RectPosition]
     enemies: list[Any]
     flag_rect: RectPosition

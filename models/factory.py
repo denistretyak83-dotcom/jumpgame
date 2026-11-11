@@ -21,6 +21,7 @@ from models.enemy_behavior import (
     FlyerBehavior,
     WalkerBehavior,
 )
+from models.platform import Platform
 from models.player import Player
 
 # протокол фабрики одного объекта
@@ -81,10 +82,29 @@ class WorldFactory:
 
     def _register_defaults(self) -> None:
         """Зарегистрировать встроенные типы."""
-        self.register("platform", lambda d: self._build_rect(d, name="platform"))
+        self.register("platform", self._build_platform)
         self.register("coin", lambda d: self._build_rect(d, name="coin"))
         self.register("flag", lambda d: self._build_rect(d, name="flag"))
         self.register("enemy", lambda d: self.create_enemy(d))
+
+    def _build_platform(self, data: dict, name: str = "platform") -> Platform:
+        """Построить типизированную платформу (task C, OCP).
+
+        Читает rect-ключи x/y/w/h и стиль "style" (по умолчанию grass_top).
+        Стиль регистрируется как данные, а сборка — через WorldFactory.
+        """
+        try:
+            x = int(data["x"])
+            y = int(data["y"])
+            w = int(data["w"])
+            h = int(data["h"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"{name}: отсутствуют/невалидны ключи прямоугольника "
+                f"(нужны x,y,w,h как числа), получено: {data}"
+            ) from exc
+        style = str(data.get("style", "grass_top"))
+        return Platform(rect=RectPosition(x, y, w, h), tile_style=style)
 
     def _build_rect(self, data: dict, name: str) -> RectPosition:
         """Построить RectPosition из пагины уровня с валидацией ключей."""
