@@ -1,25 +1,25 @@
 {
   "name": "Green Valley",
   "next_level": null,
-  "player_spawn": {"x": 50, "y": 490},
+  "player_spawn": { "x": 50, "y": 490 },
   "platforms": [
-    {"x": 0, "y": 540, "w": 200, "h": 30, "style": "grass_top"},
-    {"x": 300, "y": 540, "w": 500, "h": 30, "style": "grass_top"},
-    {"x": 180, "y": 420, "w": 140, "h": 30, "style": "grass_top"},
-    {"x": 420, "y": 340, "w": 160, "h": 30, "style": "grass_top"},
-    {"x": 640, "y": 420, "w": 140, "h": 30, "style": "grass_top"}
+    { "x": 0, "y": 540, "w": 200, "h": 30, "style": "grass_top" },
+    { "x": 300, "y": 540, "w": 500, "h": 30, "style": "grass_top" },
+    { "x": 180, "y": 420, "w": 140, "h": 30, "style": "grass_top" },
+    { "x": 420, "y": 340, "w": 160, "h": 30, "style": "grass_top" },
+    { "x": 640, "y": 420, "w": 140, "h": 30, "style": "grass_top" }
   ],
   "coins": [
-    {"x": 340, "y": 310, "w": 20, "h": 20},
-    {"x": 450, "y": 310, "w": 20, "h": 20},
-    {"x": 660, "y": 390, "w": 20, "h": 20},
-    {"x": 700, "y": 390, "w": 20, "h": 20},
-    {"x": 680, "y": 220, "w": 20, "h": 20}
+    { "x": 340, "y": 310, "w": 20, "h": 20 },
+    { "x": 450, "y": 310, "w": 20, "h": 20 },
+    { "x": 660, "y": 390, "w": 20, "h": 20 },
+    { "x": 700, "y": 390, "w": 20, "h": 20 },
+    { "x": 680, "y": 220, "w": 20, "h": 20 }
   ],
   "enemies": [
-    { "x": 320, "y": 510, "left": 310, "right": 680, "behavior": "chaser", "sprite": "chaser" },
-    { "x": 440, "y": 310, "left": 430, "right": 560, "behavior": "walker", "sprite": "walker" },
-    { "x": 250, "y": 320, "left": 200, "right": 400, "behavior": "flyer", "sprite": "flyer" }
+    { "x": 320, "y": 510, "left": 310, "right": 680, "behavior": "chaser", "sprite": "chaser", "type": "enemy", "w": 35, "h": 35 },
+    { "x": 440, "y": 310, "left": 430, "right": 560, "behavior": "walker", "sprite": "walker", "type": "enemy", "w": 35, "h": 35 },
+    { "x": 250, "y": 320, "left": 200, "right": 400, "behavior": "flyer", "sprite": "flyer", "type": "enemy", "w": 35, "h": 35 }
   ],
-  "flag": {"x": 700, "y": 300, "w": 30, "h": 60}
+  "flag": { "x": 700, "y": 300, "w": 30, "h": 60 }
 }

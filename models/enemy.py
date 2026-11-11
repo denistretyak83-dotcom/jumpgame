@@ -9,14 +9,23 @@ class Enemy(BaseCharacter):
 
     def __init__(self, x, y, left, right, config, enemy_data=None, behavior_registry=None):
         data = enemy_data or {}
+        # Тип сущности (data-driven). По умолчанию — "enemy".
+        # В схеме уровней (I1) "type" отделён от "behavior" (поведение) и
+        # "sprite" (анимация) — не путать эти три разных понятия.
+        self.entity_type = data.get("type", "enemy")
         # Поведение — по ключу "behavior", не путать с "type" сущности.
         self.behavior_type = data.get("behavior", "walker")
+
+        # Размер врага: опциональные w/h из enemy_data переопределяют
+        # размеры по умолчанию (config.enemy.width/height).
+        enemy_w = int(data.get("w", config.enemy.width))
+        enemy_h = int(data.get("h", config.enemy.height))
 
         super().__init__(
             x,
             y,
-            config.enemy.width,
-            config.enemy.height,
+            enemy_w,
+            enemy_h,
             config=config,
             death_behavior=None,
             respawn_behavior=None,

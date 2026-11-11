@@ -65,3 +65,18 @@ def test_enemy_get_visual_data():
     assert vd.height == 48
     assert vd.anim_group == "flyer"   # из sprite -> anim_group
     assert vd.facing_left is False    # vel_x > 0
+
+
+def test_enemy_honors_type_and_size_override():
+    # Поведение flyer из-за "type" НЕ должен мешать; размер переопределяется w/h.
+    e = make_enemy(behavior="walker", x=0, y=0, left=0, right=300, type="elite", w=50, h=70)
+    assert e.entity_type == "elite"
+    assert e.rect.width == 50
+    assert e.rect.height == 70
+
+
+def test_enemy_default_type_and_size():
+    e = make_enemy(behavior="walker", x=0)
+    assert e.entity_type == "enemy"
+    assert e.rect.width == FakeEnemyCfg.enemy.width == 32
+    assert e.rect.height == FakeEnemyCfg.enemy.height == 48
