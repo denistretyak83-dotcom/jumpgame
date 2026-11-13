@@ -4,6 +4,7 @@ import pygame
 
 from views.background import RetroBackground
 from views.hud import draw_pixelated_fade, draw_retro_hud
+from views.render_state import RenderState
 from views.tiles import RetroTiles, TileFactory
 
 
@@ -90,26 +91,12 @@ class Renderer:
             self.screen.blit(frame, (x, y))
 
     # ==================================================================
-    def draw(
-        self,
-        entities,
-        coins,
-        coin_collected,
-        flag_rect,
-        score,
-        lives,
-        seconds,
-        state_manager,
-        won,
-        game_over,
-        fade_level,
-        camera,
-    ):
+    def draw(self, state: RenderState):
         screen = self.screen
 
         # 1. Очистка и фон
         screen.fill(self.config.colors["SKY"])
-        self.background.draw(screen, camera.player_x)
+        self.background.draw(screen, state.camera.player_x)
 
         # 2. ПЛАТФОРМЫ
         if self.current_platforms:
@@ -119,20 +106,20 @@ class Renderer:
                 screen.blit(surf, (p.x, p.y))
 
         # 3. МОНЕТЫ
-        for i, coin in enumerate(coins):
-            if not coin_collected[i]:
-                coin_rect = coin.to_pygame_rect()  # RectPosition -> pygame.Rect (для View)
+        for i, coin in enumerate(state.coins):
+            if not state.coin_collected[i]:
+                coin_rect = coin.to_pygame_rect()
                 pygame.draw.ellipse(screen, (180, 130, 0), coin_rect.inflate(2, 2))
                 pygame.draw.ellipse(screen, (255, 220, 0), coin_rect)
                 pygame.draw.ellipse(screen, (255, 245, 120), coin_rect.inflate(-8, -8))
 
         # 4. СУЩНОСТИ (игрок + враги)
-        if not won:
-            self.draw_entities(entities)
+        if not state.won:
+            self.draw_entities(state.entities)
 
         # 5. ФЛАГ (Цель)
-        if flag_rect:
-            fx, fy = flag_rect.x, flag_rect.y
+        if state.flag_rect:
+            fx, fy = state.flag_rect.x, state.flag_rect.y
             pygame.draw.line(
                 screen, self.config.colors["BROWN"], (fx + 5, fy + 60), (fx + 5, fy), 4
             )
@@ -147,15 +134,15 @@ class Renderer:
             screen,
             self.small_font,
             self.small_font,
-            score,
-            lives,
-            seconds,
+            state.score,
+            state.lives,
+            state.seconds,
             self.coin_icon,
             self.config,
         )
 
         # 7. СООБЩЕНИЯ
-        if won:
+        if state.won:
             win_text = self.font.render("YOU WIN!", True, self.config.colors["RED"])
             screen.blit(
                 win_text, (self.config.screen.width // 2 - 90, self.config.screen.height // 2 - 40)
@@ -167,8 +154,8 @@ class Renderer:
                 restart, (self.config.screen.width // 2 - 110, self.config.screen.height // 2)
             )
 
-        if game_over:
-            if fade_level < 180:
+        if state.game_over:
+            if state.fade_level < 180:
                 go_text = self.font.render("GAME OVER!", True, self.config.colors["RED"])
                 screen.blit(
                     go_text,
@@ -180,4 +167,4 @@ class Renderer:
                 screen.blit(
                     restart, (self.config.screen.width // 2 - 110, self.config.screen.height // 2)
                 )
-            draw_pixelated_fade(screen, fade_level, self.config, grid=4)
+            draw_pixelated_fade(screen, state.fade_level, self.config, grid=4)

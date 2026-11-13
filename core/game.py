@@ -25,6 +25,7 @@ from models.collision_system import CollisionSystem
 from models.enemy import Enemy
 from models.factory import WorldFactory
 from models.player import Player
+from views.render_state import RenderState
 from views.renderer import Renderer
 from views.sprite_cache import SpriteCache
 
@@ -280,18 +281,20 @@ class Game:
     # --------------------------------------------------------------
     def _draw(self):
         self.renderer.draw(
-            self.entities,
-            self.coins,
-            self.coin_collected,
-            self.level.flag_rect,
-            self.score_manager.score,
-            self.life_manager.lives,
-            self.frame_count,
-            self.state,
-            self.collision_director.won,
-            self.game_over,
-            self.fade_level,
-            self.camera,
+            RenderState(
+                entities=self.entities,
+                coins=self.coins,
+                coin_collected=self.coin_collected,
+                flag_rect=self.level.flag_rect,
+                score=self.score_manager.score,
+                lives=self.life_manager.lives,
+                seconds=self.frame_count,
+                state_manager=self.state,
+                won=self.collision_director.won,
+                game_over=self.game_over,
+                fade_level=self.fade_level,
+                camera=self.camera,
+            )
         )
 
     # --------------------------------------------------------------
