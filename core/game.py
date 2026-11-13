@@ -12,6 +12,7 @@ from core.camera import ParallaxCamera
 from core.config import Settings
 from core.context import GameContext
 from core.event_bus import EventBus, GameEvents
+from core.game_over_handler import GameOverHandler
 from core.game_services import LifeManager, RespawnService, ScoreManager
 from core.gameplay import CollisionDirector
 from core.level_flow import LevelFlow
@@ -124,11 +125,15 @@ class Game:
         # --- Game State Vars ---
 
         self.frame_count = 0
-        self.fade_level = 0
-        self.fade_direction = 0
         self.won = False
-        self.game_over = False
         self.enemies = []
+        # ГameOverHandler (SRP) — экран Game Over: фейд и рестарт по R.
+        # reset_run_state передаётся колбэком; сервис сам не трогает state/рендер.
+        self.game_over_handler = GameOverHandler(
+            config=self.config,
+            event_bus=self.event_bus,
+            reset_run_state=self.reset_run_state,
+        )
 
         # --- Полиморфизм: единый список сущностей ---
         self.entities = []  # все движущиеся сущности (player + enemies)
@@ -216,12 +221,9 @@ class Game:
                     self.reset_run_state()
                     return
                 return
-            # GAME_OVER: рестарт или фейд
-            if keys[pygame.K_r]:
-                self.reset_run_state()
+            # GAME_OVER: рестарт по R или фейд — делегировано GameOverHandler
+            if self.game_over_handler.update(dt, keys):
                 return
-            if self.game_over:
-                self._update_game_over_fade(dt)
             return
 
         if not self.state.is_playing():
@@ -235,9 +237,7 @@ class Game:
             # True -> жизни закончились -> game over; False -> респавн; None -> смерть длится
             death_result = self.player_flow.update_death(dt)
             if death_result is True:
-                self.game_over = True
-                self.event_bus.emit(GameEvents.GAME_OVER)
-                self.fade_direction = 1
+                self.game_over_handler.start()
                 self.state.set(GameState.GAME_OVER)
             elif death_result is False:
                 # PlayerFlow уже создал нового игрока; подменяем ссылку в entities и камеру
@@ -290,13 +290,6 @@ class Game:
             self.fade_level,
             self.camera,
         )
-
-    def _update_game_over_fade(self, dt):
-        if self.fade_direction == 1:
-            self.fade_level += self.config.game.fade_speed * dt
-            if self.fade_level >= 255:
-                self.fade_level = 255
-                self.fade_direction = 0
 
     # --------------------------------------------------------------
     def _load_level(self, level_name: str):
@@ -374,3 +367,28 @@ class Game:
 
         # Рестарт с первого уровня через LevelTransition.
         self._load_level("level_1")
+
+    # --- Прокси на GameOverHandler (состояние фейда/game over живёт в сервисе) ---
+    @property
+    def game_over(self):
+        return self.game_over_handler.game_over
+
+    @game_over.setter
+    def game_over(self, value):
+        self.game_over_handler.game_over = value
+
+    @property
+    def fade_level(self):
+        return self.game_over_handler.fade_level
+
+    @fade_level.setter
+    def fade_level(self, value):
+        self.game_over_handler.fade_level = value
+
+    @property
+    def fade_direction(self):
+        return self.game_over_handler.fade_direction
+
+    @fade_direction.setter
+    def fade_direction(self, value):
+        self.game_over_handler.fade_direction = value

@@ -2,6 +2,7 @@
 import collections
 import importlib.util
 import unittest.mock
+from core.game_over_handler import GameOverHandler  # noqa: E402
 
 import pytest
 
@@ -176,27 +177,48 @@ def _make_game_fade():
     g.config = FakeCfg()
     return g
 
+# --------------------------------------------------------------------------
+# Тесты на GameOverHandler._update_fade (фейд Game Over; перенесён из Game, шаг 3)
+# --------------------------------------------------------------------------
+def _make_handler():
+    """Готовый GameOverHandler с fade_speed=100 и включённым фейдом."""
+
+    class FakeCfg:
+        class GameCfg:
+            fade_speed = 100.0
+        game = GameCfg()
+
+    h = GameOverHandler(
+        config=FakeCfg(),
+        event_bus=FakeEventBus(),
+        reset_run_state=lambda: None,
+    )
+    h.game_over = True   # используется update(); для _update_fade достаточно
+    h.fade_direction = 1
+    h.fade_level = 0
+    return h
+
 
 def test_game_over_fade_increases():
-    g = _make_game_fade()
-    g._update_game_over_fade(1.0)
-    assert g.fade_level == pytest.approx(100.0)
+    h = _make_handler()
+    h._update_fade(1.0)
+    assert h.fade_level == pytest.approx(100.0)
 
 
 def test_game_over_fade_clamps_at_255():
-    g = _make_game_fade()
-    g.fade_level = 250
-    g._update_game_over_fade(1.0)
-    assert g.fade_level == 255
-    assert g.fade_direction == 0
+    h = _make_handler()
+    h.fade_level = 250
+    h._update_fade(1.0)
+    assert h.fade_level == 255
+    assert h.fade_direction == 0
 
 
 def test_game_over_fade_idle_when_direction_zero():
-    g = _make_game_fade()
-    g.fade_direction = 0
-    g.fade_level = 50
-    g._update_game_over_fade(1.0)
-    assert g.fade_level == 50
+    h = _make_handler()
+    h.fade_direction = 0
+    h.fade_level = 50
+    h._update_fade(1.0)
+    assert h.fade_level == 50
 
 
 # --------------------------------------------------------------------------
@@ -241,15 +263,31 @@ def _run_update(g, pressed_keys=()):
         g._update(0.016)
 
 
+def _attach_game_over(g):
+    """Привязать GameOverHandler к Game, построенному через object.__new__(Game)."""
+
+    class _Cfg:
+        class _GameCfg:
+            fade_speed = 100.0
+        game = _GameCfg()
+
+    g.game_over_handler = GameOverHandler(
+        config=_Cfg(),
+        event_bus=FakeEventBus(),
+        reset_run_state=lambda: None,  # won-ветка зовёт g.reset_run_state напрямую
+    )
+    return g
+
+
 def _make_game_for_won():
     g = object.__new__(Game)
+    g = _attach_game_over(g)
     g.current_level_name = "level_2"
     g.won = True
     g.game_over = False
     g.collision_director = type("CD", (), {"won": True})()
     g.level_manager = _FakeLevelManager(None)  # нет следующего уровня
     g.state = _FakeStateManager(GameState.WON)
-
     # НОВОЕ: заглушка LevelTransition (Game теперь использует self.level_transition)
     g.level_transition = _FakeLevelTransition(next_name=None)  # последний уровень
 
@@ -299,6 +337,7 @@ def test_won_with_next_level_advances_not_restart():
 
 def test_advance_to_next_level_loads_next_and_plays():
     g = object.__new__(Game)
+    g = _attach_game_over(g)
     g.current_level_name = "level_1"
     g.level_manager = _FakeLevelManager("level_2")
     g.state = _FakeStateManager(GameState.WON)
@@ -306,7 +345,6 @@ def test_advance_to_next_level_loads_next_and_plays():
     g.won = True
     g.game_over = False
     g.collision_director = type("CD", (), {"won": True})()
-
     # НОВОЕ: заглушка LevelTransition, переход на level_2
     g.level_transition = _FakeLevelTransition(next_name="level_2")
 
@@ -324,6 +362,7 @@ def test_advance_to_next_level_loads_next_and_plays():
 
 def test_advance_to_next_level_none_is_last_level():
     g = object.__new__(Game)
+    g = _attach_game_over(g)
     g.current_level_name = "level_2"
     g.level_manager = _FakeLevelManager(None)
     g.state = _FakeStateManager(GameState.WON)
@@ -343,6 +382,7 @@ def test_advance_to_next_level_none_is_last_level():
 
 def test_load_level_resets_won_flags_and_coins():
     g = object.__new__(Game)
+    g = _attach_game_over(g)
     g.current_level_name = "level_1"
     g.won = True
     g.game_over = True
