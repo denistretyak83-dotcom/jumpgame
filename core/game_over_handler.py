@@ -75,3 +75,15 @@ class GameOverHandler:
         self.game_over = False
         self.fade_level = 0
         self.fade_direction = 0
+
+    # ------------------------------------------------------------------
+    # DIP (шаг 4): при инъекции сервиса извне пере-установить колбэк рестарта
+    # ------------------------------------------------------------------
+    def set_reset_callback(self, callback) -> None:
+        """Пере-установить колбэк рестарта (используется при DI через services).
+
+        Позволяет Game при инъекции заранее созданного GameOverHandler гарантиро-
+        вать, что рестарт по R ведёт в Game.reset_run_state, а не в переданный
+        извне колбэк.
+        """
+        self._reset_run_state = callback

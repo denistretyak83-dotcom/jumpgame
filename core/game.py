@@ -30,11 +30,17 @@ from views.sprite_cache import SpriteCache
 
 
 class Game:
-    def __init__(self, config=None, logger=None, root_dir=None):
+    # Контракт services (DIP, шаг 4):
+    #  - renderer, screen, sprite_cache, coin_icon передаются ТОЛЬКО вместе;
+    #  - asset_loader + sounds — тоже вместе;
+    #  - world_factory, player_flow, level_transition, collision_director,
+    #    game_over_handler — по отдельности.
+    def __init__(self, config=None, logger=None, root_dir=None, services=None):
         if root_dir is None:
             root_dir = str(pathlib.Path(__file__).resolve().parent.parent)
         self.root = pathlib.Path(root_dir)
         self.config = config or Settings()
+        services = services or {}  # DI-словарь (DIP, шаг 4): подстановка зависимостей
 
         # DI: логгер инжектируется; создаётся из settings.logging, если не передан (R3)
         self.logger = logger or GameLogger(config=self.config.logging)
@@ -57,16 +63,41 @@ class Game:
             },
         )
 
-        # --- Assets & Audio ---
-        self.assets = AssetLoader(str(self.root), self.config)
-        self.sounds = SoundManager(self.assets.sounds_abs)
+        # --- Assets & Audio (группа связанности: через services, иначе — по умолчанию) ---
+        self.assets = services.get("asset_loader") or AssetLoader(str(self.root), self.config)
+        self.sounds = services.get("sounds") or SoundManager(self.assets.sounds_abs)
 
         self.controller = PlayerController()
         attach_audio_listener(self.event_bus, self.sounds)
 
-        # --- Screen & Renderer ---
-        self.screen = pygame.display.set_mode((self.config.screen.width, self.config.screen.height))
-        pygame.display.set_caption(self.config.screen.caption)
+        # --- Screen & Renderer (группа: screen/sprite_cache/coin_icon/renderer) ---
+        if services.get("renderer") is not None:
+            self.screen = services["screen"]
+            self.sprite_cache = services["sprite_cache"]
+            self.coin_icon = services["coin_icon"]
+            self.renderer = services["renderer"]
+        else:
+            self.screen = pygame.display.set_mode(
+                (self.config.screen.width, self.config.screen.height)
+            )
+            pygame.display.set_caption(self.config.screen.caption)
+            self.sprite_cache = SpriteCache(self.assets, self.config)
+            self.coin_icon = self._make_coin_icon()
+            self.font = self.assets.get_font(self.config.assets.font_size)
+            self.small_font = self.assets.get_font(self.config.assets.small_font_size)
+            self.renderer = Renderer(
+                self.screen,
+                self.sprite_cache,
+                self.coin_icon,
+                self.font,
+                self.small_font,
+                self.config,
+                view_registry={
+                    Player: lambda: self.sprite_cache.player_view(),
+                    Enemy: lambda: self.sprite_cache.enemy_view(),
+                },
+            )
+
         self.clock = pygame.time.Clock()
 
         # ██ R6: единая система коллизий (все проверки за один проход)
@@ -75,28 +106,8 @@ class Game:
             fall_buffer=self.config.collision.fall_buffer,
         )
 
-        self.font = self.assets.get_font(self.config.assets.font_size)
-        self.small_font = self.assets.get_font(self.config.assets.small_font_size)
-        self.coin_icon = self._make_coin_icon()
-
-        # ██ НОВОЕ: SpriteCache (View-слой анимаций) вместо player_anims/enemy_anims
-        self.sprite_cache = SpriteCache(self.assets, self.config)
-
-        self.renderer = Renderer(
-            self.screen,
-            self.sprite_cache,
-            self.coin_icon,
-            self.font,
-            self.small_font,
-            self.config,
-            view_registry={
-                Player: lambda: self.sprite_cache.player_view(),
-                Enemy: lambda: self.sprite_cache.enemy_view(),
-            },
-        )
-
         # --- Factories ---
-        self.world_factory = WorldFactory(self.assets, self.config)
+        self.world_factory = services.get("world_factory") or WorldFactory(self.assets, self.config)
         self.respawn_service = RespawnService(self.world_factory)
 
         # --- Level Management ---
@@ -114,8 +125,8 @@ class Game:
             camera=self.camera,
             sounds=self.sounds,
         )
-        # НОВОЕ: LevelTransition (SRP) — каталог уровней и переходы вынесены из Game.
-        self.level_transition = LevelTransition(
+        # НОВОЕ: LevelTransition (SRP). DIP: подменить можно через services.
+        self.level_transition = services.get("level_transition") or LevelTransition(
             level_manager=self.level_manager,
             level_flow=self.level_flow,
         )
@@ -123,42 +134,51 @@ class Game:
         self.score_manager = ScoreManager(self.event_bus)
 
         # --- Game State Vars ---
-
         self.frame_count = 0
         self.won = False
         self.enemies = []
-        # ГameOverHandler (SRP) — экран Game Over: фейд и рестарт по R.
-        # reset_run_state передаётся колбэком; сервис сам не трогает state/рендер.
-        self.game_over_handler = GameOverHandler(
-            config=self.config,
-            event_bus=self.event_bus,
-            reset_run_state=self.reset_run_state,
-        )
 
         # --- Полиморфизм: единый список сущностей ---
-        self.entities = []  # все движущиеся сущности (player + enemies)
-        self.player = None  # быстрая ссылка на игрока
+        self.entities = []
+        self.player = None
         self.player_view = None
-        # НОВОЕ: PlayerFlow (SRP) — смерть/респавн/жизни вынесены из Game.
-        self.player_flow = PlayerFlow(
+        # PlayerFlow (SRP). DIP: подменить можно через services.
+        self.player_flow = services.get("player_flow") or PlayerFlow(
             world_factory=self.world_factory,
             life_manager=self.life_manager,
             event_bus=self.event_bus,
         )
 
-        # Event Listeners
-        self.life_manager = LifeManager(self.config.game.lives, self.event_bus)
-        self.score_manager = ScoreManager(self.event_bus)
-        # --- Gameplay: обработка коллизий (вынесено из Game, Фаза 3) ---
-        self.collision_director = CollisionDirector(
+        # --- Gameplay: обработка коллизий. DIP: подменить можно через services. ---
+        collision_director = services.get("collision_director")
+        self.collision_director = collision_director or CollisionDirector(
             collision_system=self.collision_system,
             score_manager=self.score_manager,
             event_bus=self.event_bus,
             sounds=self.sounds,
             state=self.state,
         )
+
+        # --- GameOverHandler (SRP). DIP: при инъекции пере-устанавливаем колбэк ---
+        game_over_handler = services.get("game_over_handler")
+        if game_over_handler is not None:
+            game_over_handler.set_reset_callback(self.reset_run_state)
+            self.game_over_handler = game_over_handler
+        else:
+            self.game_over_handler = GameOverHandler(
+                config=self.config,
+                event_bus=self.event_bus,
+                reset_run_state=self.reset_run_state,
+            )
+
         # Initialize
         self.reset_run_state()
+
+    def _make_coin_icon(self):
+        icon = pygame.Surface((16, 16), pygame.SRCALPHA)
+        pygame.draw.circle(icon, (255, 200, 0), (8, 8), 7)
+        pygame.draw.circle(icon, (255, 240, 100), (6, 6), 4)
+        return icon
 
     @property
     def current_level_name(self):
@@ -179,23 +199,6 @@ class Game:
         self._level_transition_cache = value
 
     # --- Helpers ---
-    def _make_coin_icon(self):
-        icon = pygame.Surface((16, 16), pygame.SRCALPHA)
-        pygame.draw.circle(icon, (255, 200, 0), (8, 8), 7)
-        pygame.draw.circle(icon, (255, 240, 100), (6, 6), 4)
-        return icon
-
-    # --- Main Loop ---
-    def run(self):
-        running = True
-        while running:
-            dt = self.clock.tick(self.config.screen.fps) / 1000.0
-            running = self._process_events()
-            self._update(dt)
-            self._draw()
-            pygame.display.flip()
-        pygame.quit()
-
     def _process_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -392,3 +395,13 @@ class Game:
     @fade_direction.setter
     def fade_direction(self, value):
         self.game_over_handler.fade_direction = value
+
+    def run(self):
+        running = True
+        while running:
+            dt = self.clock.tick(self.config.screen.fps) / 1000.0
+            running = self._process_events()
+            self._update(dt)
+            self._draw()
+            pygame.display.flip()
+        pygame.quit()
