@@ -1,26 +1,25 @@
-# Аудит исходного кода «Jump & Reach the Flag» — редакция v2
+# Аудит исходного кода «Jump & Reach the Flag» — редакция v3
 
 **Анализируемый артефакт:** JumpGame (Python + pygame, MVC-архитектура).
-**Метод:** статический анализ актуального кода (`core/game.py`, `core/gameplay.py`, `views/renderer.py`, `main.py`) + факты из `SESSION_CHECKPOINT.md` (297 тестов, CI-пайплайн).
-**Дата:** после завершения Фазы 7.
-
+**Метод:** статический анализ актуального кода + факты из SESSION_CHECKPOINT.md
+(305 тестов, CI-пайплайн).
+**Дата:** после завершения Фаз 7–10.
 ---
 
-## 0. Резюме изменений относительно редакции v1
+## 0.1. Резюме изменений относительно v2 (Фазы 8–10)
 
-> v1 фиксировала состояние ДО Фазы 7. За это время закрыты ключевые пункты декомпозиции и качества.
+> v2 фиксировала состояние после Фазы 7 (297 тестов). Затем закрыты три фазы дорожной карты.
 
-| Было в v1 | Стало теперь | Статус |
+| Было в v2 | Стало теперь | Статус |
 |---|---|---|
-| ❌ Ноль юнит-тестов | **297 passed** | ✅ Закрыто |
-| ❌ `Game` — God-Object (вся логика в `_update`) | `PlayerFlow`, `LevelTransition`, `GameOverHandler`, `CollisionDirector` вынесены | ✅ Закрыто |
-| ❌ Коллизии/игровые правила в `Game` | Правила в `CollisionDirector.process` | ✅ Закрыто |
-| ❌ Нет DI (кроме `config`/`logger`) | DIP через `services` + Composition Root в `main.py` | ✅ Закрыто |
-| ⚠️ `Renderer.draw` — fat-interface (~12 арг.) | `draw(state: RenderState)` — data-class | ✅ Закрыто |
-| ⚠️ `models/collision.py` — дубликат + магия `30` | удалён | ✅ Закрыто |
-| ❌ Нет CI | `.github/workflows/ci.yml` + `release.yml` | ✅ Закрыто |
-| ❌ Мёртвые файлы `enemy_controller.py`, `player_view.py` | остались на месте | ⚠️ Открыто |
+| ⚠️ Мёртвые `enemy_controller.py`, `player_view.py` | Удалены | ✅ Закрыто |
+| ⚠️ Мёртвый `Game._respawn_player()` | Удалён (дубль PlayerFlow) | ✅ Закрыто |
+| ⚠️ Lambda-реестр вью Player/Enemy в `Game.__init__` | Вынесен в `views/view_factory.py` (OCP) | ✅ Закрыто |
+| ⚠️ Хардкод цветов монет/иконки | Вынесен в `config.colors` + `views/coin_icon.py` | ✅ Закрыто |
+| Тестов: 297 | **305 passed** | ✅ Рост на 8 |
 
+Новые файлы: `views/view_factory.py`, `views/coin_icon.py`.
+Новые тесты: `tests/test_view_factory.py` (+5), `tests/test_theme.py` (+3).
 ---
 
 ## 1. Аудит по осям
@@ -45,14 +44,15 @@
 
 Остаточные обязанности в `Game`:
 - роль **фабрики/композиции** — `__init__` создаёт окно, шрифты, `view_registry`, системы;
-- **мёртвый метод `_respawn_player()`** — дублирует `PlayerFlow.respawn` и в `_update` не вызывается.
-
+- в __init__ собирает окно, шрифты и передаёт реестр вью из `ViewFactory`;
+  мёртвый `_respawn_player()` удалён в Фазе 8.
 `Entity` остаётся **God-классом геометрии** (9+ properties → `pygame.Rect`) — риск №1 не решён.
 
 #### O — Open/Closed
 
-**Хорошо.** `WorldFactory` registry, `EnemyBehaviorRegistry`, `Renderer.view_registry` + `register_view`. Замечание: регистрация вью для Player/Enemy строится **lambda-фабриками прямо в `Game.__init__`** — OCP-точка остаётся в оркестраторе, а не в `SpriteCache`/фабрике вью.
-
+**Хорошо.** `WorldFactory` registry, `EnemyBehaviorRegistry`, `Renderer.view_registry` + `register_view`.
+С Фазы 9 реестр вью Player/Enemy строится в `views/view_factory.py` (единый `ViewFactory`),
+а `Game` и Composition Root получают его готовым — OCP-точка больше не в оркестраторе.
 #### L — Liskov
 
 Базовая композиция поведений и состояний снижает необходимость в подстановке. `Player`/`Enemy` взаимозаменяемы в цикле `entity.update(dt, ctx, intent)` и в `draw_entities` через `get_visual_data()`.
@@ -65,10 +65,8 @@
 
 #### D — Dependency Inversion
 
-**Значительно улучшено.** `Game(services=...)`, Composition Root в `main.py`.
-
-Открытая проблема: **`controllers/enemy_controller.py` ссылается на несуществующий глобальный `settings`** (`from core.config import settings`) — при импорте был бы `ImportError`. Модуль мёртв, но код — потенциальная мина.
-
+Открытая проблема была: `controllers/enemy_controller.py` ссылался на несуществующий
+`settings` (потенциальный ImportError). Фаза 8 удалила модуль — мина снята.
 ### c) MVC
 
 **Соответствует ядру.**
@@ -104,7 +102,8 @@
 
 ### i) Качество кода
 
-- ⚠️ Хардкод цветов в `Renderer.draw` (монета/флаг), вероятно, в `background.py`/`hud.py` — вместо `config.colors`.
+- - ✅ Хардкод цветов монет/иконки вынесен в `config.colors` (Фаза 10);
+  остаточный хардкод (при его наличии) — в `background.py`/`hud.py`.
 - ✅ Типизация, docstrings, типизированные `try/except`.
 - ✅ 297 тестов + CI-пайплайн.
 - ⚠️ `Game.__init__` — масштабная фабричная композиция (много ответственности сборки).
@@ -114,51 +113,50 @@
 ## 2. Обновлённая оценка
 
 **v1:** ≈ 6,5/10.
-**v2 (текущая):** ≈ **8,5/10**.
+**v2:** ≈ 8,5/10.
+**v3 (текущая):** ≈ **9,0/10**.
 
-Обоснование: закрыты пять шагов Фазы 7 (SRP-декомпозиция Game, DIP, RenderState), 297 тестов, CI, удалён `collision.py`. До 9–9,5 не дотягивает из-за: мёртвых файлов (`enemy_controller`, `player_view`), мёртвого `Game._respawn_player`, lambda-реестра вью в Game, хардкода цветов, нерешённых рисков pygame.Rect и Enemy без физики.
+Обоснование: закрыты три фазы — удалён мёртвый код (Фаза 8), изолирована
+OCP-регистрация вью в `ViewFactory` (Фаза 9), централизованы цвета монет
+и иконки в `config.colors`/`coin_icon.py` (Фаза 10). 305 тестов.
 
+До 9,5–10 не дотягивает из-за нерешённых рисков: `Entity`+`pygame.Rect`
+(риск №1, Фаза 11), Enemy без физики (риск №3, Фаза 12), рассинхрон
+README/JSON (Фаза 13).
 ---
 
 ## 3. Актуальные нарушения (с приоритетом)
 
 **Критично:**
-1. `controllers/enemy_controller.py` — ссылка на несуществующий глобальный `settings` (потенциальный `ImportError`). Модуль мёртв.
+— (пусто) — все мины ImportError сняты в Фазе 8.
 
 **Важно:**
-2. `views/player_view.py` — мёртвый; читает несуществующие `player.animations` (нарушение «View не читает модель»).
-3. `Game._respawn_player()` — мёртвый метод-дубль `PlayerFlow.respawn`.
-4. OCP-регистрация вью (lambda Player/Enemy) в `Game.__init__` — размазана по оркестратору.
-5. Хардкод цветов в рендере/фоне/HUD вместо `config.colors`.
-6. Риск №1 — `Entity` + `pygame.Rect` (крупный, возможно отдельной фазой).
+- Риск №1 — `Entity` + `pygame.Rect` (крупный, отдельной фазой 11).
+- Риск №3 — Enemy без физики/гравитации (Фаза 12).
+- `Animatable` Protocol объявлен, но не используется (мелкий долг).
 
 **Незначительно:**
-7. Рассинхрон README/JSON (персональные данные врагов).
-8. Массовая композиция в `Game.__init__`.
-
+- Рассинхрон README/JSON (персональные данные врагов) — Фаза 13.
+- Массовая композиция в `Game.__init__` (уже ослаблена Фазами 7–9).
 ---
 
-## 4. План улучшений (ООП/MVC/SOLID/расширяемость)
+### Фаза 8 — Гигиена мёртвого кода [DONE]
+- ✅ 8.1 Удалить `controllers/enemy_controller.py`.
+- ✅ 8.2 Удалить `views/player_view.py`.
+- ✅ 8.3 Удалить `Game._respawn_player()`.
+- Коммит: `chore: remove dead modules`.
 
-> Каждая фаза сохраняет зелёный прогон тестов (база 297) и добавляет новые.
+### Фаза 9 — Изоляция OCP-регистрации вью от Game [DONE]
+- ✅ 9.1 Перенесено в `views/view_factory.py`.
+- ✅ 9.2 `Renderer.set_view_registry()`; Game не строит lambda Player/Enemy.
+- ✅ Тест: `tests/test_view_factory.py` (+5).
 
-### Фаза 8 — Гигиена мёртвого кода
-- **8.1** Удалить `controllers/enemy_controller.py`.
-- **8.2** Удалить `views/player_view.py`.
-- **8.3** Удалить `Game._respawn_player()` (дубль `PlayerFlow.respawn`).
-- Коммит: `chore: remove dead modules (enemy_controller, player_view, Game._respawn_player)`.
+### Фаза 10 — Вынос констант/цветов (R5/Theme) [DONE]
+- ✅ 10.1 Цвета монет/иконки в `config.colors`.
+- ✅ 10.2 `Renderer._color()` с fallback; `views/coin_icon.py`.
+- ✅ Тест: `tests/test_theme.py` (+3) — smoke-рендер не изменился.
 
-### Фаза 9 — Изоляция OCP-регистрации вью от Game
-- **9.1** Перенести построение/регистрацию `view_registry` в `SpriteCache` (или фабрику вью).
-- **9.2** `Renderer` принимает готовый реестр; `Game` не строит lambda Player/Enemy.
-- Тест: отрисовка Player/Enemy по реестру.
-
-### Фаза 10 — Вынос констант/цветов (R5/Theme)
-- **10.1** Вынести цвета монеты/флага/фона/HUD в `config.colors` (или `config/theme.json`).
-- **10.2** Протянуть цвета через `RenderState`/`Renderer`/HUD из конфига.
-- Тест: smoke-рендер не изменился.
-
-### Фаза 11 — Отделение геометрии от `pygame.Rect` (риск №1)
+### Фаза 11 — Отделение геометрии от `pygame.Rect` (риск №1, крупный)
 - Ввести `RectPosition`/`Geometry` DTO; `to_pygame_rect()` по требованию в View.
 - Требуется полный набор тестов геометрии/коллизий до начала.
 
@@ -176,7 +174,7 @@
 
 ## 5. Рекомендуемый старт
 
-**Фаза 8** — удаление мёртвого кода: дёшево, чистит слои и убирает мину `ImportError`.
-
----
+Фазы 8–10 закрыты. Дальше — **Фаза 11** (отделение геометрии от pygame.Rect):
+крупный рефакторинг, требует полноценного набора тестов геометрии/коллизий
+до начала изменений.
 
