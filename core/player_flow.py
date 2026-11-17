@@ -63,11 +63,9 @@ class PlayerFlow:
 
     # ------------------------------------------------------------------
     def respawn(self) -> Player:
-        """Создать нового игрока на спавне уровня и заменить self.player.
-
-        Возвращает нового игрока, чтобы Game мог подменить ссылку в своём
-        списке entities и перевести камеру.
-        """
+        """Создать нового игрока на спавне уровня и заменить self.player."""
+        if self._level is None:
+            raise RuntimeError("PlayerFlow.respawn: уровень не связан (bind_level не вызван)")
         spawn = self._level.player_spawn
         new_player = self._world_factory.create_player(spawn[0], spawn[1], self._event_bus)
         self.player = new_player

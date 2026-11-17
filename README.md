@@ -86,7 +86,8 @@ Every level lives in `levels/` as a `.json` file with this schema:
   "player_spawn": {"x": 50, "y": 100},
   "platforms": [ {"x": 0, "y": 540, "w": 200, "h": 30, "style": "grass_top"} ],
   "coins":     [ {"x": 340, "y": 310, "w": 20, "h": 20} ],
-  "enemies":   [ {"x": 320, "y": 510, "left": 310, "right": 480} ],
+  "enemies":   [ {"x": 320, "y": 510, "left": 310, "right": 480,
+                  "behavior": "walker", "sprite": "walker", "w": 35, "h": 35} ],
   "flag":      {"x": 700, "y": 300, "w": 30, "h": 60}
 }
 ```
@@ -99,8 +100,14 @@ Fields:
 - `platforms`: array of `{x, y, w, h, style}`. Coordinates are absolute pixels.
   `style` selects the tile renderer (`grass_top` or `floating_platform`).
 - `coins`: array of `{x, y, w, h}` coin collision boxes.
-- `enemies`: array of `{x, y, left, right}`. `left`/`right` are the patrol
-  boundaries the enemy walks between before turning around.
+- `enemies`: array of `{x, y, left, right, behavior, sprite, w, h}`.
+  - `left`/`right` — границы патруля (враг ходит между ними до разворота).
+  - `behavior` — тип поведения (OCP-реестр): `walker`, `chaser`, `flyer`,
+    `jumper` (+ расширяемые). По умолчанию `"walker"`.
+  - `sprite` — ключ анимации (обычно совпадает с `behavior`, напр. `"walker"`).
+  - `w`/`h` — персональные размеры врага (px); при отсутствии берутся
+    из `config.enemy` (35×35).
+  - `type` — необязательно: сущность (`"enemy"` по умолчанию), отделён от поведения.
 - `flag`: the winning flag collision box `{x, y, w, h}`.
 
 ### Adding a new level (level_2.json)

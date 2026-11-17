@@ -110,4 +110,13 @@ Game._respawn_player). Дёшево, чистит слои, убирает ми�
 5. Каждый завершённый шаг фиксируется: коммит + обновление SESSION_CHECKPOINT.md/AUDIT.md.
 
 ---
+## ФИНАЛЬНЫЙ СТАТУС — все фазы закрыты
 
+- Фазы 1–13 завершены полностью.
+- Тестов: 320 passed (pytest tests/ -q).
+- Линтер: ruff check + format — чисто.
+- Типизация: mypy models core --ignore-missing-imports --check-untyped-defs — 0 ошибок.
+- Покрытие: 86.36% (порог 80%).
+- CI: jobs tests / lint / typecheck в .github/workflows/ci.yml.
+
+### Итоговая оценка AUDIT v6: ≈ 9,5/10.

@@ -51,6 +51,13 @@ exclude tests/venv и друго. Тесты свободнее (`per-file-ignor
 > Если ruff жалуется на оставшийся старый код — это отдельная задача (не форматировать
 > весь проект в рамках этой фазы), можно добавить исключения или почистить поэтапно.
 
+### 3bis. Типизация (mypy)
+
+```bash
+pip install mypy
+mypy models core --ignore-missing-imports --check-untyped-defs
+make typecheck        # если задан в Makefile
+
 ## 4. Покрытие тестами
 
 ```bash
@@ -112,3 +119,16 @@ CI делает то же самое автоматом при пуше тега
   коллизии), `views/` (рендер/спрайты), `controllers/`, `levels/`, `audio/`, `main.py`.
 - Архитектура MVC + EventBus + Data-Driven JSON + DI (без глобалов).
 - Игра запускается: `python main.py`.
+
+
+---
+
+## Шаг 13.5 — Прогон
+
+```bash
+python -m pytest tests/ -q
+# и отдельно проверить, что покрытие не упало ниже новом omit:
+python -m pytest --cov --cov-report=term-missing
+ruff check .
+ruff format --check .
+mypy models core --ignore-missing-imports --check-untyped-defs

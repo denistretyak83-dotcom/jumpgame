@@ -20,6 +20,7 @@ dev = [
     "pytest-cov>=4.1",
     "ruff>=0.4",
     "coverage>=7.4",
+    "mypy>=1.10",
 ]
 
 [tool.setuptools]
@@ -73,12 +74,16 @@ line-ending = "auto"
 [tool.coverage.run]
 source = ["models", "core", "controllers", "levels"]
 branch = true
-# ВРЕМЕННО исключаем views/ и audio/ из подсчёта покрытия.
-# Вернём их после стабилизации архитектуры по SOLID/MVC/OCP
-# (см. ACTION_PLAN / дорожную карту - тесты Views/Audio запланированы позже).
+# Аудио и визуально-тяжёлые view-модули требуют pygame display/реальных ассетов.
+# Остальные view-модули (view_factory, coin_icon, render_state, tiles) считаются.
 omit = [
-    "views/*",
     "audio/*",
+    "views/background.py",
+    "views/hud.py",
+    "views/sprite_cache.py",
+    "views/animation.py",
+    "views/character_view.py",
+    "views/renderer.py",
 ]
 
 [tool.coverage.report]

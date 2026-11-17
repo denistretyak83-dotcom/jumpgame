@@ -74,9 +74,14 @@ class WorldFactory:
 
     def entity_factories(self) -> dict[str, ObjectFactory]:
         """Вернуть dict фабрик для LevelManager (единообразные обёртки)."""
-        return {
-            obj_type: (lambda d, t=obj_type: self.create(t, d)) for obj_type in list(self._registry)
-        }
+        factories: dict[str, ObjectFactory] = {}
+        for obj_type in list(self._registry):
+
+            def _make(d: dict, t: str = obj_type) -> Any:
+                return self.create(t, d)
+
+            factories[obj_type] = _make
+        return factories
 
     # ------------------------------------------------------------------
     # Дефолтные фабрики (обязательны для работы игры)

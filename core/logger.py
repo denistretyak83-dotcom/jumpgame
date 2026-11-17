@@ -79,7 +79,7 @@ class GameLogger:
         # Файл логов: logs/game_TIMESTAMP.log
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.log_file = self.log_dir / f"game_{ts}.log"
-        self.events = []
+        self.events: list = []
 
     def _rotate_logs(self):
         """Удаляет файлы game_*.log старше max_age_days и удерживает max_files шт."""

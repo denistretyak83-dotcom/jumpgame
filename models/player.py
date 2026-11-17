@@ -28,7 +28,7 @@ class Player(BaseCharacter):
         # ВАЖНО: создаётся ПОСЛЕ super().__init__ (нужны vel_x/on_ground)
         self.state_machine = PlayerStateMachine(IdleState())
 
-    def update(self, dt, ctx, intent=None):
+    def update(self, dt, ctx=None, intent=None):
         if self.is_dead:
             self.update_death(dt)
             return
@@ -48,7 +48,8 @@ class Player(BaseCharacter):
             if self.event_bus:
                 self.event_bus.emit(GameEvents.PLAYER_JUMP)
 
-        head_bumped = self.apply_physics(dt, ctx.platforms)
+        platforms = ctx.platforms if ctx is not None else []
+        head_bumped = self.apply_physics(dt, platforms)
         if head_bumped and self.event_bus:
             self.event_bus.emit(GameEvents.PLAYER_BUMP)
 
@@ -57,7 +58,6 @@ class Player(BaseCharacter):
         if hasattr(ctx, "screen_width") and self.rect.right > ctx.screen_width:
             self.rect.right = ctx.screen_width
 
-        # --- ОБНОВЛЕНИЕ СОСТОЯНИЯ (после физики, чтобы vel_y/on_ground актуальны) ---
         self.state_machine.handle(self, intent, dt)
 
     def get_visual_data(self) -> ModelVisualData:

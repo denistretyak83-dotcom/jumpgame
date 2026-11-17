@@ -23,6 +23,7 @@ from core.state_manager import GameState, StateManager
 from levels.level_manager import LevelManager
 from models.collision_system import CollisionSystem
 from models.factory import WorldFactory
+from models.player import Player
 from views.render_state import RenderState
 from views.renderer import Renderer
 from views.sprite_cache import SpriteCache
@@ -138,7 +139,7 @@ class Game:
 
         # --- Полиморфизм: единый список сущностей ---
         self.entities = []
-        self.player = None
+        self.player: Player | None = None
         self.player_view = None
         # PlayerFlow (SRP). DIP: подменить можно через services.
         self.player_flow = services.get("player_flow") or PlayerFlow(
@@ -234,6 +235,8 @@ class Game:
         self.sprite_cache.update(dt)
 
         # 2. Смерть игрока
+        if self.player is None:
+            return
         if self.player.is_dead:
             # True -> жизни закончились -> game over; False -> респавн; None -> смерть длится
             death_result = self.player_flow.update_death(dt)
@@ -241,13 +244,16 @@ class Game:
                 self.game_over_handler.start()
                 self.state.set(GameState.GAME_OVER)
             elif death_result is False:
-                # PlayerFlow уже создал нового игрока; подменяем ссылку в entities и камеру
+                # PlayerFlow гарантированно создал нового игрока (возврат False)
+                new_player = self.player_flow.player
+                assert new_player is not None, "респавн не был выполнен"
+                # Заменяем МЁРТВОГО игрока (старую ссылку self.player) на нового
                 for i, e in enumerate(self.entities):
                     if e is self.player:
-                        self.entities[i] = self.player_flow.player
+                        self.entities[i] = new_player
                         break
-                self.player = self.player_flow.player
-                self.camera.update(self.player.rect.x)
+                self.player = new_player
+                self.camera.update(new_player.rect.x)
             return
 
         # 3. Ввод через контроллер
@@ -272,6 +278,7 @@ class Game:
         )
 
         # 6. Камера и счётчик
+        assert self.player is not None
         self.camera.update(self.player.rect.x)
         self.frame_count += 1
 
@@ -342,19 +349,6 @@ class Game:
         self.won = False
         self.game_over = False
         self.collision_director.won = False
-
-    def _respawn_player(self):
-        spawn_point = self.level.player_spawn
-        new_player = self.world_factory.create_player(
-            spawn_point[0], spawn_point[1], self.event_bus
-        )
-        # Заменяем мёртвого игрока на нового в списке сущностей
-        for i, e in enumerate(self.entities):
-            if e is self.player:
-                self.entities[i] = new_player
-                break
-        self.player = new_player
-        self.camera.update(self.player.rect.x)
 
     def reset_run_state(self):
         """Полный перезапуск игры (кнопка R после победы/поражения)."""

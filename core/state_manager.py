@@ -13,19 +13,19 @@ class StateManager:
     """Tracks the current game state and the previous state."""
 
     def __init__(self, initial: GameState = GameState.PLAYING):
-        self.state = initial
-        self.previous = None
+        self.state: GameState = initial
+        self.previous: GameState | None = None
 
-    def set(self, new_state: GameState):
+    def set(self, new_state: GameState) -> None:
         self.previous = self.state
         self.state = new_state
 
     @property
-    def current(self):
+    def current(self) -> GameState:
         return self.state
 
-    def is_playing(self):
+    def is_playing(self) -> bool:
         return self.state is GameState.PLAYING
 
-    def has_ended(self):
+    def has_ended(self) -> bool:
         return self.state in (GameState.WON, GameState.GAME_OVER)
