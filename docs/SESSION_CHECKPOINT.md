@@ -120,3 +120,4 @@ Game._respawn_player). Дёшево, чистит слои, убирает ми�
 - CI: jobs tests / lint / typecheck в .github/workflows/ci.yml.
 
 ### Итоговая оценка AUDIT v6: ≈ 9,5/10.
+ 
