@@ -17,6 +17,7 @@ from core.logger import GameLogger
 from models.factory import WorldFactory
 from views.renderer import Renderer
 from views.sprite_cache import SpriteCache
+from views.view_factory import ViewFactory
 
 
 def _make_coin_icon(screen_conf, assets_conf):
@@ -44,6 +45,9 @@ def build_services(settings, logger, root_dir):
     font = asset_loader.get_font(settings.assets.font_size)
     small_font = asset_loader.get_font(settings.assets.small_font_size)
     coin_icon = _make_coin_icon(settings.screen, settings.assets)
+    # Фаза 9: реестр вью строится в ViewFactory (единственный источник,
+    # без __import__ и без знания типов в Composition Root).
+    registry = ViewFactory(sprite_cache).build_default_registry()
     renderer = Renderer(
         screen,
         sprite_cache,
@@ -51,12 +55,7 @@ def build_services(settings, logger, root_dir):
         font,
         small_font,
         settings,
-        view_registry={
-            __import__("models.player", fromlist=["Player"]).Player: lambda: (
-                sprite_cache.player_view()
-            ),
-            __import__("models.enemy", fromlist=["Enemy"]).Enemy: lambda: sprite_cache.enemy_view(),
-        },
+        view_registry=registry,
     )
 
     # --- Фабрика мира ---

@@ -36,6 +36,11 @@ class Renderer:
         """OCP: новый тип сущности = регистрация, без правки Renderer."""
         self._view_registry[entity_cls] = view_factory
 
+    # --- Фаза 9: замена реестра целиком (готовый, из ViewFactory) ---
+    def set_view_registry(self, registry):
+        """Назначает готовый реестр «тип -> вью» (строится в ViewFactory)."""
+        self._view_registry = registry or {}
+
     # --- хелперы платформ ---
     def _platform_surface(self, width, height, style="grass_top"):
         key = (width, height, style)

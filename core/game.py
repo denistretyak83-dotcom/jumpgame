@@ -22,12 +22,11 @@ from core.player_flow import PlayerFlow
 from core.state_manager import GameState, StateManager
 from levels.level_manager import LevelManager
 from models.collision_system import CollisionSystem
-from models.enemy import Enemy
 from models.factory import WorldFactory
-from models.player import Player
 from views.render_state import RenderState
 from views.renderer import Renderer
 from views.sprite_cache import SpriteCache
+from views.view_factory import ViewFactory
 
 
 class Game:
@@ -93,10 +92,10 @@ class Game:
                 self.font,
                 self.small_font,
                 self.config,
-                view_registry={
-                    Player: lambda: self.sprite_cache.player_view(),
-                    Enemy: lambda: self.sprite_cache.enemy_view(),
-                },
+            )
+            # Фаза 9: реестр вью строит ViewFactory (изоляция от Game).
+            self.renderer.set_view_registry(
+                ViewFactory(self.sprite_cache).build_default_registry()
             )
 
         self.clock = pygame.time.Clock()
