@@ -15,7 +15,12 @@
     "BLACK": "0,0,0",
     "GOLD": "255,215,0",
     "WHITE": "255,255,255",
-    "SKY_RETRO": "108,156,252"
+    "SKY_RETRO": "108,156,252",
+    "COIN_EDGE": "180,130,0",
+    "COIN": "255,220,0",
+    "COIN_HILIGHT": "255,245,120",
+    "COIN_ICON": "255,200,0",
+    "COIN_ICON_HILIGHT": "255,240,100"
   },
   "player": {
     "width": 40,

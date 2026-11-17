@@ -114,9 +114,16 @@ class Renderer:
         for i, coin in enumerate(state.coins):
             if not state.coin_collected[i]:
                 coin_rect = coin.to_pygame_rect()
-                pygame.draw.ellipse(screen, (180, 130, 0), coin_rect.inflate(2, 2))
-                pygame.draw.ellipse(screen, (255, 220, 0), coin_rect)
-                pygame.draw.ellipse(screen, (255, 245, 120), coin_rect.inflate(-8, -8))
+                pygame.draw.ellipse(
+                    screen, self._color("COIN_EDGE", (180, 130, 0)), coin_rect.inflate(2, 2)
+                )
+                pygame.draw.ellipse(
+                    screen, self._color("COIN", (255, 220, 0)), coin_rect
+                )
+                pygame.draw.ellipse(
+                    screen, self._color("COIN_HILIGHT", (255, 245, 120)), coin_rect.inflate(-8, -8)
+                )
+
 
         # 4. СУЩНОСТИ (игрок + враги)
         if not state.won:
@@ -173,3 +180,12 @@ class Renderer:
                     restart, (self.config.screen.width // 2 - 110, self.config.screen.height // 2)
                 )
             draw_pixelated_fade(screen, state.fade_level, self.config, grid=4)
+
+    # --- Фаза 10: безопасное чтение цвета из конфига с fallback на дефолт ---
+    def _color(self, key, default):
+        """Возвращает цвет из config.colors, иначе -- default.
+
+        Позволяет тестам не зависеть от всех ключей и не ломать рендер
+        при отсутствии цвета в settings.json.
+        """
+        return self.config.colors.get(key, default)
