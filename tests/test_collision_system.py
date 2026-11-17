@@ -144,3 +144,37 @@ def test_multi_collision_all_results_together():
     assert result.hit_enemy is enemy
     assert result.hit_flag is True
     assert result.fell_out is True
+
+def test_coin_collected_list_shorter_than_coins_is_safe():
+    # coin_collected короче coins: не должен бросать IndexError
+    sys = make_system()
+    player = RectPosition(0, 0, 32, 48)
+    coins = [
+        RectPosition(5, 5, 16, 16),    # пересечение, но индекс 0 -> True в списке
+        RectPosition(2, 2, 16, 16),    # пересечение, индекс 1 -> нет флага
+    ]
+    result = sys.check(player, coins, [True], [], None)
+    # индекс 1 не "собран" (нет флага), о нём не спотыкаемся
+    # индекс 0 "собран" -> переходим к 1
+    assert result.coin_index == 1
+
+
+def test_empty_coins_and_enemies_return_defaults():
+    sys = make_system()
+    player = RectPosition(0, 0, 32, 48)
+    result = sys.check(player, [], [], [], None)
+    assert result.coin_index is None
+    assert result.hit_enemy is None
+    assert result.hit_flag is False
+    assert result.fell_out is False
+
+
+def check(self, player_rect, coins, coin_collected, enemies, flag_rect):
+    result = CollisionResult()
+    # 1. Монеты
+    for i, coin in enumerate(coins):
+        collected = (i < len(coin_collected)) and coin_collected[i]
+        if not collected and player_rect.intersects(coin):
+            result.coin_index = i
+            break
+    ...

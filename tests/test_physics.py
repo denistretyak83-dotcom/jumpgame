@@ -244,3 +244,12 @@ def test_physics_body_protocol_atttributes_present():
     b = FakeBody()
     for attr in ("rect", "vel_x", "vel_y", "on_ground", "is_dead"):
         assert hasattr(b, attr)
+
+
+def test_apply_no_gravity_when_on_ground():
+    pc = PhysicsComponent()
+    owner = FakeOwner(vel_y=0.0)
+    owner.on_ground = True
+    pc.apply(owner, dt=0.1, platforms=[])
+    # на земле гравитация не копится
+    assert owner.vel_y == pytest.approx(0.0, abs=1e-6)

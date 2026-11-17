@@ -172,3 +172,24 @@ def test_float_precision_computed_edges() -> None:
     assert abs(r.bottom - 7.0) < 1e-9
     assert abs(r.centerx - 3.25) < 1e-9
     assert abs(r.centery - 4.75) < 1e-9
+
+def test_move_ip_returns_self():
+    a = RectPosition(10, 10, 20, 20)
+    assert a.move_ip(3, 4) is a
+    assert (a.x, a.y) == (13, 14)
+
+
+def test_copy_is_independent():
+    a = RectPosition(1, 2, 3, 4)
+    b = a.copy()
+    b.x = 100
+    b.width = 999
+    assert a.x == 1 and a.width == 3   # исходник не тронут
+    assert (b.x, b.width) == (100, 999)
+
+
+def test_move_ip_leaves_size():
+    a = RectPosition(5, 5, 30, 30)
+    a.move_ip(-5, 5)
+    assert (a.x, a.y) == (0, 10)
+    assert (a.width, a.height) == (30, 30)

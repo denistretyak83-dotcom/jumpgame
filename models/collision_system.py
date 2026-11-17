@@ -53,9 +53,11 @@ class CollisionSystem:
         """Один проход: монеты -> враг -> флаг -> падение."""
         result = CollisionResult()
 
-        # 1. Монеты — первая попавшаяся неподобранная
+        # 1. Монеты — первая попавшаяся неподобранная.
+        #    coin_collected может быть короче coins (защита от IndexError).
         for i, coin in enumerate(coins):
-            if not coin_collected[i] and player_rect.intersects(coin):
+            already_collected = i < len(coin_collected) and coin_collected[i]
+            if not already_collected and player_rect.intersects(coin):
                 result.coin_index = i
                 break
 

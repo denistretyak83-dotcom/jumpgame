@@ -94,9 +94,7 @@ class Game:
                 self.config,
             )
             # Фаза 9: реестр вью строит ViewFactory (изоляция от Game).
-            self.renderer.set_view_registry(
-                ViewFactory(self.sprite_cache).build_default_registry()
-            )
+            self.renderer.set_view_registry(ViewFactory(self.sprite_cache).build_default_registry())
 
         self.clock = pygame.time.Clock()
 

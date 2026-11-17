@@ -117,13 +117,10 @@ class Renderer:
                 pygame.draw.ellipse(
                     screen, self._color("COIN_EDGE", (180, 130, 0)), coin_rect.inflate(2, 2)
                 )
-                pygame.draw.ellipse(
-                    screen, self._color("COIN", (255, 220, 0)), coin_rect
-                )
+                pygame.draw.ellipse(screen, self._color("COIN", (255, 220, 0)), coin_rect)
                 pygame.draw.ellipse(
                     screen, self._color("COIN_HILIGHT", (255, 245, 120)), coin_rect.inflate(-8, -8)
                 )
-
 
         # 4. СУЩНОСТИ (игрок + враги)
         if not state.won:

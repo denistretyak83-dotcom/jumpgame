@@ -85,3 +85,12 @@ def test_width_height_setters_keep_origin():
     assert e.top == 20
     assert e.right == 260
     assert e.bottom == 110
+
+def test_entity_to_pygame_rect():
+    import importlib.util
+    if importlib.util.find_spec("pygame") is None:
+        import pytest
+        pytest.skip("pygame недоступен")
+    e = Entity(1.9, 2.9, 10.4, 5.6)
+    pr = e.to_pygame_rect()
+    assert (pr.x, pr.y, pr.width, pr.height) == (1, 2, 10, 5)
