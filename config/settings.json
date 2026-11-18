@@ -48,7 +48,8 @@
     "lives": 3,
     "coins_total": 5,
     "death_respawn_offset": 60,
-    "fade_speed": 255
+    "fade_speed": 255,
+    "sprite_source": "png"
   },
   "animation": {
     "idle_delay": 0.167,

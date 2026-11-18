@@ -42,11 +42,19 @@ def build_services(settings, logger, root_dir):
 
     # --- View-слой (группа: screen/sprite_cache/coin_icon/renderer) ---
     sprite_cache = SpriteCache(asset_loader, settings)
+
+    # ШАГ D: procedural-графика (генератор спрайтов 90-х).
+    # Включить через settings.game.sprite_source ("procedural"|"png").
+    _source_name = getattr(getattr(settings, "game", None), "sprite_source", "png")
+    if _source_name == "procedural":
+        from views.sprites.procedural import ProceduralSpriteSource
+
+        sprite_cache.register_source("procedural", ProceduralSpriteSource(settings, scale=2))
+        sprite_cache.set_default_source("procedural")
+
     font = asset_loader.get_font(settings.assets.font_size)
     small_font = asset_loader.get_font(settings.assets.small_font_size)
     coin_icon = _make_coin_icon(settings.screen, settings.assets)
-    # Фаза 9: реестр вью строится в ViewFactory (единственный источник,
-    # без __import__ и без знания типов в Composition Root).
     registry = ViewFactory(sprite_cache).build_default_registry()
     renderer = Renderer(
         screen,

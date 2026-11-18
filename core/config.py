@@ -53,6 +53,7 @@ class GameConfig:
     coins_total: int = 5
     death_respawn_offset: int = 60
     fade_speed: int = 255
+    sprite_source: str = "png"  # "png" | "procedural"  (ФР-2, Шаг D)
 
 
 @dataclass

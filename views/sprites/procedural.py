@@ -154,17 +154,32 @@ class ProceduralSpriteSource:
         if not self.supports(key):
             raise KeyError(f"ProceduralSpriteSource не поддерживает '{key}'")
         if key.startswith("player"):
-            return _make_anim_by_poses(
-                _PLAYER_POSES, self._scale
-            )  # уже ок, если _PLAYER_POSES аннотирован
+            raw = _make_anim_by_poses(_PLAYER_POSES, self._scale)
+            return self._fit_to(raw, "player")
         if key == "enemy_walk":
             poses: list[list[str]] = [_WALKER_IDLE]
-            return _make_anim_by_poses(poses, self._scale)
+            raw = _make_anim_by_poses(poses, self._scale)
+            return self._fit_to(raw, "enemy")
         if key == "coin":
             return [self._make_coin()]
         if key == "tile":
             return [self._make_tile()]
         return []
+
+    # --- согласование с хитбоксом: масштаб до config.player/enemy ---
+    def _fit_to(self, frames: list[pygame.Surface], kind: str) -> list[pygame.Surface]:
+        """Масштабирует кадры до размеров config (player/enemy), чтобы кадр
+        совпадал с хитбоксом модели."""
+        cfg = getattr(self._cfg, kind, None)
+        if cfg is None or not hasattr(cfg, "width"):
+            return frames
+        w, h = int(cfg.width), int(cfg.height)
+        out = []
+        for f in frames:
+            if f.get_size() != (w, h):
+                f = pygame.transform.scale(f, (w, h))
+            out.append(f)
+        return out
 
     # --- алгоритмические фигуры (монета, тайл) ---
     def _make_coin(self) -> pygame.Surface:
