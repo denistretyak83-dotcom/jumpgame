@@ -24,18 +24,18 @@
 ## 4. НЕОТЛОЖНОЕ ЗАДАНИЕ ДЛЯ АГЕНТА В ЭТОЙ СЕССИИ
 Новое направление: ГРАФИКА 90-х (Sonic/Mario/DuckTales) + генератор спрайтов.
 
-**Первый шаг — ФР-1: SpriteSource контракт.**
-Что сделать:
-1. Прочитать актуальные коды (присланы в сессии):
-   - views/sprite_cache.py, views/animation.py, views/character_view.py,
-     core/asset_loader.py, core/config.py.
-2. Создать views/sprites/sprite_source.py с Protocol SpriteSource
-   (frames/size/supports) + PngSpriteSource (обёртка над AssetLoader).
-3. Интегрировать SpriteSource в SpriteCache через реестр источников (OCP),
-   НЕ меняя логику рендера (32-тестовая сеть должна остаться зелёной).
-4. Добавить конфиг палитры в config (задел под ФР-2).
-5. Написать тесты: PNG и генератор дают кадры одинакового формата.
-   Ожидание: 320 + N passed.
+**Первый шаг — ФР-1: SpriteSource контракт. [СДЕЛАНО]**
+- Создан views/sprites/sprite_source.py (Protocol SpriteSource: frames/size/supports
+  + PngSpriteSource — обёртка над AssetLoader).
+- SpriteCache получил реестр источников (register_source/set_default_source), default — "png".
+- Тест: tests/test_sprite_source.py (+9). База: 320 + 9 = 329 passed.
+
+**Второй шаг — ФР-2: ProceduralPixelArt (генератор спрайтов).**
+- Реализовать ProceduralSpriteSource implements SpriteSource; генерирует кадры из
+  палитры (config.colors) и параметров (тип: hero/enemy/coin/tile).
+- Интегрировать: cache.register_source("procedural", gen); switch default при желании.
+- Добавить конфиг палитры в config (если нет — дописать в settings.json colors).
+- Тест: сгенерированные кадры имеют ожидаемые размеры и форму.
 
 **Дальше по роадмапу:** ФР-2 (ProceduralPixelArt) -> ФР-3 (TileSet+автотайлинг)
 -> ФР-4 (ParallaxBackground) -> ФР-5 (анимации squash&stretch).
