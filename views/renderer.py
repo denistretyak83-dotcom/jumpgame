@@ -12,6 +12,7 @@ class Renderer:
     def __init__(
         self, screen, sprite_cache, coin_icon, font, small_font, config, view_registry=None
     ):
+        self._autotilers = {}  # style -> AutoTiler
         self.screen = screen
         self.sprite_cache = sprite_cache
         self.coin_icon = coin_icon
@@ -42,10 +43,12 @@ class Renderer:
         self._view_registry = registry or {}
 
     # --- хелперы платформ ---
-    def _platform_surface(self, width, height, style="grass_top"):
-        key = (width, height, style)
+    def _platform_surface(self, width, height, style="grass_top", mask=0):
+        key = (width, height, style, mask)
         if key not in self._platform_surfaces:
-            self._platform_surfaces[key] = self._make_tile(style, width, height)
+            surf = self._make_tile(style, width, height)
+            self._draw_edges(surf, mask, width, height)
+            self._platform_surfaces[key] = surf
         return self._platform_surfaces[key]
 
     @staticmethod
@@ -103,11 +106,12 @@ class Renderer:
         screen.fill(self.config.colors["SKY"])
         self.background.draw(screen, state.camera.player_x)
 
-        # 2. ПЛАТФОРМЫ
+        # 2. PLATFORMS (автотайлинг: рёбра обводятся там, где нет соседа)
         if self.current_platforms:
             for p in self.current_platforms:
                 style = getattr(p, "tile_style", "grass_top")
-                surf = self._platform_surface(p.width, p.height, style)
+                mask = self._neighbor_mask(p)
+                surf = self._platform_surface(p.width, p.height, style, mask)
                 screen.blit(surf, (p.x, p.y))
 
         # 3. МОНЕТЫ
@@ -186,3 +190,48 @@ class Renderer:
         при отсутствии цвета в settings.json.
         """
         return self.config.colors.get(key, default)
+
+    def _neighbor_mask(self, p) -> int:
+        """Вычисляет маску соседей для платформы p по другим платформам.
+
+        Бит TILE_MASK_TOP/BOTTOM/LEFT/RIGHT ставится, если с этой стороны
+        есть соприкасающаяся платформа-сосед.
+        """
+        from views.tiles.autotile import (
+            TILE_MASK_BOTTOM,
+            TILE_MASK_LEFT,
+            TILE_MASK_RIGHT,
+            TILE_MASK_TOP,
+        )
+
+        mask = 0
+        for other in self.current_platforms:
+            if other is p:
+                continue
+            # gorizontal: одинаковый x-диапазон, соприкасается по y
+            if other.x < p.x + p.width and other.x + other.width > p.x:
+                # сосед снизу: верх other == низ p
+                if abs(other.y - (p.y + p.height)) <= 2:
+                    mask |= TILE_MASK_BOTTOM
+                # сосед сверху: низ other == верх p
+                if abs((other.y + other.height) - p.y) <= 2:
+                    mask |= TILE_MASK_TOP
+            # вертикаль: одинаковый y-диапазон, соприкасается по x
+            if other.y < p.y + p.height and other.y + other.height > p.y:
+                if abs(other.x - (p.x + p.width)) <= 2:
+                    mask |= TILE_MASK_RIGHT
+                if abs((other.x + other.width) - p.x) <= 2:
+                    mask |= TILE_MASK_LEFT
+        return mask
+
+    def _draw_edges(self, surf, mask, width, height):
+        """Обводит тёмной линией грани платформы, где НЕТ соседа (ФР-3.5)."""
+        edge = (0, 0, 0)
+        if not (mask & 1):  # top
+            pygame.draw.rect(surf, edge, (0, 0, width, 2))
+        if not (mask & 2):  # bottom
+            pygame.draw.rect(surf, edge, (0, height - 2, width, 2))
+        if not (mask & 4):  # left
+            pygame.draw.rect(surf, edge, (0, 0, 2, height))
+        if not (mask & 8):  # right
+            pygame.draw.rect(surf, edge, (width - 2, 0, 2, height))
