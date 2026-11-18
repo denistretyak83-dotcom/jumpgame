@@ -17,32 +17,42 @@
 - Враги: палитра-варианты, 1-2 кадра idle.
 - Фон: 3 слоя параллакса (небо, горы, ближние объекты).
 
-## 3. Фазы работы (каждая — с зелёными тестами)
+## 3. Фазы работы
 
-### ФР-1: SpriteSource — контракт источника кадров [ПРИОРИТЕТ]
-- Единый контракт, по которому и PNG-загрузчик, и procedural-генератор
-  отдают кадры. SpriteCache работает с источниками через реестр (OCP).
-- Новые модули: views/sprites/sprite_source.py
-- Тест: и PNG, и генератор дают кадры одинакового формата/размера.
+### ФР-1: SpriteSource — контракт источника кадров [DONE]
+- views/sprites/sprite_source.py: Protocol SpriteSource (frames/size/supports)
+  + PngSpriteSource (обёртка над AssetLoader).
+- SpriteCache: реестр источников (register_source/set_default_source), default "png".
+- Тест: tests/test_sprite_source.py.
 
-### ФР-2: ProceduralPixelArt — генератор пиксельных спрайтов
-- Генерация спрайтов из параметров (палитра, размер, тип):
-  персонаж-герой, враги (walker/chaser/flyer), декоративные плитки, монеты.
-- Палитра в config (colors).
-- Тест: сгенерированные кадры имеют ожидаемые размеры/прозрачность.
+### ФР-2: ProceduralPixelArt — генератор пиксельных спрайтов [DONE]
+- views/sprites/procedural.py: гибридный подход (ASCII-карты героя/врагов
+  + фигуры монет/тайлов).
+- ProceduralSpriteSource реализует SpriteSource; кадры масштабируются под
+  хитбокс (config.player/config.enemy).
+- Переключение источника в КОМПОЗИТ: settings.game.sprite_source = "png" | "procedural".
+- Тест: tests/test_procedural_sprite.py.
 
-### ФР-3: Palette/TileSet — автотайлинг [DONE]
-- Добавлен views/tiles/autotile.py: AutoTiler + маски соседей (4 стороны),
-  работающие поверх любого генератора тайлов (OCP).
-- Тест: tests/test_autotile.py (+6). База: 335 + 6 = 341 passed.
+### ФР-3 / 3.5: Автотайлинг [DONE]
+- views/tiles/autotile.py: AutoTiler + маски соседей (TILE_MASK_*).
+- Renderer: _neighbor_mask (вычисление соседей платформы) + _draw_edges
+  (обводка рёбер без соседа). Условный автотайлинг платформ.
+- Тест: tests/test_tile_edges.py.
 
-### ФР-4: ParallaxBackground (3 слоя)
-- Замена RetroBackground на многослойный фон с ассетами.
-- Тест: слои двигаются с разной скоростью.
+### ФР-4: ParallaxBackground [DONE]
+- views/backgrounds/: контракт Background (Protocol) + RetroBackground
+  (многослойный: небо/горы/облака), цвета из config.colors, OCP-реестр слоёв.
+- Renderer использует RetroBackground через контракт.
+- Тест: tests/test_parallax.py.
 
-### ФР-5: Живые анимации героя (squash&stretch)
-- Расширение Animation: хуки анимаций прыжка/приземления.
-- Тест: анимация переходит и кадр изменяется по событию.
+### ФР-5: Squash & stretch — ЖИВЫЕ анимации героя [ТЕКУЩАЯ/СЛЕДУЮЩАЯ]
+- Деформация кадра по состоянию (jump -> растяжение по Y, landing -> сжатие).
+- В View-слое (CharacterView), НЕ в модели.
+- Тест: кадр меняет размер при прыжке/приземлении.
+
+## 3.1 Оценка прогресса графики
+- Старт: 3-4/10. После ФР-1..4: ≈ 7-8/10.
+- После ФР-5 (squash&stretch): ≈ 8,5-9/10.
 
 ## 4. Принципы (не нарушаем ООП/MVC/SOLID)
 - SpriteSource — OCP: PNG и генератор регистрируются как источники.
