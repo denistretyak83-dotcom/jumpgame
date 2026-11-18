@@ -1,10 +1,8 @@
-"""Background -- RetroBackground (parallax) ported from retro_graphics.py.
+"""
+views/backgrounds/retro.py — RetroBackground (многослойный параллакс).
 
-Uses core.camera.ParallaxCamera internally for wrapped layer offsets. Provides
-both update(player_x) and draw(screen, player_x).
-
-DI (R3): размеры экрана инжектируются через конструктор (ParallaxCamera
-также теперь получает размеры, а не читает глобальный settings).
+Реализует контракт Background. Цвета берёт из config.colors (тема, Фаза 10),
+слой покрашенные без хардкода. Добавление нового слоя = добавить в _build_layers.
 """
 
 import pygame
@@ -13,27 +11,62 @@ from core.camera import ParallaxCamera
 
 
 class RetroBackground:
-    def __init__(self, screen_width, screen_height):
+    """Ретро-фон: небо + горы (дальние/ближние) + облака, с параллаксом."""
+
+    def __init__(self, screen_width, screen_height, config=None):
         self.width = screen_width
         self.height = screen_height
-        self.sky_top = (108, 156, 252)
-        self.sky_bottom = (168, 200, 255)
+        # Цвета из темы (config.colors) с fallback на дефолтные.
+        colors = getattr(config, "colors", {}) if config else {}
+        self.sky_top = colors.get("SKY_RETRO", (108, 156, 252))
+        self.sky_bottom = colors.get("SKY", (168, 200, 255))
 
-        self.mountains_far = self._make_mountains_far()
-        self.mountains_near = self._make_mountains_near()
-        self.clouds = self._make_cloud_layer()
+        # Скорости параллакс-слоёв (из config или дефолт) — ДО сборки слоёв
+        self.far_speed = getattr(config, "far_speed", 0.05) if config else 0.05
+        self.near_speed = getattr(config, "near_speed", 0.15) if config else 0.15
+        self.cloud_speed = getattr(config, "cloud_speed", 0.025) if config else 0.025
 
-        self.far_speed = 0.05
-        self.near_speed = 0.15
-        self.cloud_speed = 0.025
+        self._layers = []
+        self._build_layers()
 
-        # DI: ParallaxCamera теперь требует размеры
         self.camera = ParallaxCamera(
             screen_width=self.width,
             screen_height=self.height,
         )
 
-    # ---------------- layer construction (verbatim from original) ----------
+    # ---------------- сборка слоёв ----------------
+    def _build_layers(self):
+        self.mountains_far = self._make_mountains_far()
+        self.mountains_near = self._make_mountains_near()
+        self.clouds = self._make_cloud_layer()
+        # реестр слоёв (OCP-точка: добавить слой = append в список)
+        self._layers = [
+            ("clouds", self.clouds, self.cloud_speed, self.width * 2, 0),
+            ("far", self.mountains_far, self.far_speed, self.width, 80),
+            ("near", self.mountains_near, self.near_speed, self.width, 150),
+        ]
+
+    @property
+    def layers(self) -> list:
+        return list(self._layers)
+
+    # ---------------- слой конструкторы (перенесено из оригинала) ----------------
+    # (вставь сюда _make_mountains_far, _make_mountains_near, _make_cloud_layer
+    #  из твоего views/background.py, без изменений)
+
+    def update(self, player_x, scroll_speed=1):
+        self.camera.update(player_x)
+
+    def draw(self, screen, player_x):
+        self.camera.update(player_x)
+        screen.fill(self.sky_top)
+
+        for _name, surf, speed, repeat, y_off in self._layers:
+            off = self.camera.layer_offset(speed, repeat)
+            screen.blit(surf, (off, y_off))
+            screen.blit(surf, (off - repeat, y_off))
+            screen.blit(surf, (off + repeat, y_off))
+
     def _make_mountains_far(self):
         w = self.width
         surf = pygame.Surface((w * 2, 180), pygame.SRCALPHA)
@@ -127,26 +160,3 @@ class RetroBackground:
             pygame.draw.rect(surf, (255, 255, 255), (cx + 30, cy, 30, 10))
             pygame.draw.rect(surf, (210, 225, 245), (cx, cy + 24, 90, 5))
         return surf
-
-    # ---------------- API ----------------
-    def update(self, player_x, scroll_speed=1):
-        """Record the current player x for parallax."""
-        self.camera.update(player_x)
-
-    def draw(self, screen, player_x):
-        """Draw all parallax layers given the player's world x."""
-        self.camera.update(player_x)
-        screen.fill(self.sky_top)
-
-        cxo = self.camera.layer_offset(self.cloud_speed, self.width * 2)
-        screen.blit(self.clouds, (cxo - self.width * 2, 0))
-        screen.blit(self.clouds, (cxo, 0))
-        screen.blit(self.clouds, (cxo + self.width * 2, 0))
-
-        fxo = self.camera.layer_offset(self.far_speed, self.width)
-        screen.blit(self.mountains_far, (fxo, 80))
-        screen.blit(self.mountains_far, (fxo - self.width, 80))
-
-        nxo = self.camera.layer_offset(self.near_speed, self.width)
-        screen.blit(self.mountains_near, (nxo, 150))
-        screen.blit(self.mountains_near, (nxo - self.width, 150))

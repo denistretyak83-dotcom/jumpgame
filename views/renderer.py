@@ -2,7 +2,7 @@
 
 import pygame
 
-from views.background import RetroBackground
+from views.backgrounds import RetroBackground
 from views.hud import draw_pixelated_fade, draw_retro_hud
 from views.render_state import RenderState
 from views.tiles import RetroTiles, TileFactory
@@ -23,6 +23,7 @@ class Renderer:
         self.background = RetroBackground(
             screen_width=self.config.screen.width,
             screen_height=self.config.screen.height,
+            config=self.config,
         )
         self.tiles = RetroTiles()
 
