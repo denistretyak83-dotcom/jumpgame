@@ -44,8 +44,8 @@ def _resolve_color(symbol: str, config_colors: dict) -> tuple[int, int, int]:
 # ---------------------------------------------------------------------------
 # ASCII-карты (символ = пиксель)
 # ---------------------------------------------------------------------------
-
-_HERO_IDLE = [
+# --- ASCII-карты (символ = пиксель; карта = list[str] из рядов-строк) ---
+_HERO_IDLE: list[str] = [
     "..HHHH..",
     ".HEEEH..",
     ".HEEEH..",
@@ -58,7 +58,7 @@ _HERO_IDLE = [
     ".LLL.LL.",
 ]
 
-_HERO_RUN_1 = [
+_HERO_RUN_1: list[str] = [
     "..HHHH..",
     ".HEEEH..",
     ".HEEEH..",
@@ -71,7 +71,7 @@ _HERO_RUN_1 = [
     "L.LL..L.",
 ]
 
-_HERO_RUN_2 = [
+_HERO_RUN_2: list[str] = [
     "..HHHH..",
     ".HEEEH..",
     ".HEEEH..",
@@ -84,7 +84,7 @@ _HERO_RUN_2 = [
     ".LL..LL.",
 ]
 
-_WALKER_IDLE = [
+_WALKER_IDLE: list[str] = [
     "..GGGG..",
     "G.KGGK.G",
     "G.KGGK.G",
@@ -95,27 +95,20 @@ _WALKER_IDLE = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Рендерер карты -> pygame.Surface
-# ---------------------------------------------------------------------------
-
-
-def render_grid(grid: list[list[str]], scale: int = 1) -> pygame.Surface:
-    """Строит Surface из ASCII-карты. Каждый символ = 1 пиксель (или scale)."""
+def render_grid(grid: list[str], scale: int = 1) -> pygame.Surface:
     h = len(grid)
     w = len(grid[0]) if grid else 0
     surf = pygame.Surface((w * scale, h * scale), pygame.SRCALPHA)
     for y, row in enumerate(grid):
         for x, ch in enumerate(row):
             if ch == ".":
-                continue  # прозрачный
+                continue
             color = _resolve_color(ch, {})
-            # рисуем пиксель (или квадрат scale×scale)
             pygame.draw.rect(surf, color, (x * scale, y * scale, scale, scale))
     return surf
 
 
-def _make_anim_by_poses(poses: list[list[list[str]]], scale: int) -> list[pygame.Surface]:
+def _make_anim_by_poses(poses: list[list[str]], scale: int) -> list[pygame.Surface]:
     return [render_grid(p, scale) for p in poses]
 
 
@@ -123,7 +116,7 @@ def _make_anim_by_poses(poses: list[list[list[str]]], scale: int) -> list[pygame
 # ProceduralSpriteSource
 # ---------------------------------------------------------------------------
 
-_PLAYER_POSES = [_HERO_IDLE, _HERO_RUN_1, _HERO_RUN_2]
+_PLAYER_POSES: list[list[str]] = [_HERO_IDLE, _HERO_RUN_1, _HERO_RUN_2]
 
 
 class ProceduralSpriteSource:
@@ -161,9 +154,12 @@ class ProceduralSpriteSource:
         if not self.supports(key):
             raise KeyError(f"ProceduralSpriteSource не поддерживает '{key}'")
         if key.startswith("player"):
-            return _make_anim_by_poses(_PLAYER_POSES, self._scale)
+            return _make_anim_by_poses(
+                _PLAYER_POSES, self._scale
+            )  # уже ок, если _PLAYER_POSES аннотирован
         if key == "enemy_walk":
-            return _make_anim_by_poses([_WALKER_IDLE], self._scale)
+            poses: list[list[str]] = [_WALKER_IDLE]
+            return _make_anim_by_poses(poses, self._scale)
         if key == "coin":
             return [self._make_coin()]
         if key == "tile":
