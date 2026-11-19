@@ -21,13 +21,15 @@
    - Контракт Background (Protocol) + RetroBackground (небо/горы/облака).
    - Цвета из config.colors, OCP-реестр слоёв (_layers).
 
-## 3. НЕОТЛОЖНОЕ ЗАДАНИЕ: ФР-5 squash&stretch
-- Локация правки: views/character_view.py, метод render().
-- По state.anim_key деформировать кадр:
-  * jump -> pygame.transform.scale(шире/выше) (stretch по Y).
-  * landing/fall -> squash по Y (растянуть по X).
-- НЕ трогать модель. Тест: кадр меняет размер при jump/landing.
-- Цель: 353 + N passed; mypy 0; ruff чистый.
+## 3. НЕОТЛОЖНОЕ ЗАДАНИЕ: ФР-5 squash&stretch [DONE]
+- Локация: views/character_view.py (render/_apply_squash).
+- CharacterVisualState.vel_y; деформация по vel_y.
+- Тест пройден. База 357 passed.
+
+## Далее (опционально, на будущее)
+- Полная интеграция procedural-спрайтов во все уровни.
+- Procedural-фон (генерация слоёв вместо фиксированных полигонов).
+- Расширение палитры/тайлсетов, автотайлинг-сетка 32x32.
 
 ## 4. Переключение procedural-графики в игре
 - config/settings.json -> game.sprite_source = "procedural" (герой/враги из генератора).
